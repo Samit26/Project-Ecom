@@ -1,0 +1,202 @@
+/* Profile Page */
+.profile-container {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 30px;
+}
+
+.profile-sidebar {
+  background-color: var(--white);
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: var(--shadow);
+  height: fit-content;
+  position: sticky;
+  top: 120px;
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  background-color: var(--primary-orange);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  color: white;
+  font-size: 2.5rem;
+}
+
+.profile-header h3 {
+  color: var(--secondary-blue);
+  margin-bottom: 5px;
+}
+
+.profile-header p {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.profile-nav ul {
+  list-style: none;
+}
+
+.profile-nav li {
+  margin-bottom: 10px;
+}
+
+.profile-nav a {
+  display: block;
+  padding: 12px 15px;
+  background-color: var(--light-gray);
+  border-radius: 5px;
+  text-decoration: none;
+  color: var(--dark-gray);
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.profile-nav a:hover,
+.profile-nav a.active {
+  background-color: var(--primary-orange);
+  color: white;
+}
+
+.profile-content {
+  background-color: var(--white);
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: var(--shadow);
+  min-height: 600px;
+}
+
+.profile-section {
+  min-height: 500px;
+}
+
+.profile-section h2 {
+  color: var(--secondary-blue);
+  margin-bottom: 10px;
+}
+
+.profile-section > p {
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.login-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.order-list,
+.wishlist-items {
+  display: grid;
+  gap: 20px;
+}
+
+.order-card,
+.wishlist-card {
+  background-color: var(--light-gray);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.order-status {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-delivered {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-cancelled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .profile-container {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-sidebar {
+    position: static;
+  }
+
+  .profile-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .profile-nav li {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-content {
+    padding: 20px;
+  }
+
+  .profile-sidebar {
+    padding: 20px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+
+  .order-card,
+  .wishlist-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-content {
+    padding: 15px;
+  }
+
+  .profile-sidebar {
+    padding: 15px;
+  }
+
+  .profile-nav ul {
+    flex-direction: column;
+  }
+
+  .profile-nav li {
+    min-width: 100%;
+  }
+
+  .order-card div:last-child {
+    text-align: left !important;
+  }
+}

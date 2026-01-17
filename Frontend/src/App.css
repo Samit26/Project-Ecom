@@ -1,0 +1,42 @@
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 40px 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Admin Panel Button */
+.admin-panel-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: var(--accent-purple);
+  color: white;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(107, 78, 255, 0.4);
+  z-index: 99;
+  transition: var(--transition);
+}
+
+.admin-panel-btn:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px 0;
+  }
+}
