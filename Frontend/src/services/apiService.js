@@ -1,10 +1,12 @@
 import api from "./api";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://project-ecom-ww82.onrender.com";
+
 // Auth Services
 export const authService = {
   // Initiate Google OAuth
   loginWithGoogle: () => {
-    window.location.href = "http://localhost:5000/api/auth/google";
+    window.location.href = `${API_URL}/api/auth/google`;
   },
 
   // Get current user
