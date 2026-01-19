@@ -1,6 +1,7 @@
 import api from "./api";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://project-ecom-ww82.onrender.com";
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://project-ecom-ww82.onrender.com";
 
 // Auth Services
 export const authService = {
@@ -159,9 +160,10 @@ export const adminService = {
     return response.data;
   },
 
-  updateOrderStatus: async (id, orderStatus) => {
+  updateOrderStatus: async (id, orderStatus, deliveryLink) => {
     const response = await api.put(`/admin/orders/${id}/status`, {
       orderStatus,
+      deliveryLink,
     });
     return response.data;
   },

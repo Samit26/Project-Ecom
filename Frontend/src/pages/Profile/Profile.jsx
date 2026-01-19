@@ -370,6 +370,16 @@ const Profile = () => {
                           >
                             {formatOrderStatus(order.orderStatus)}
                           </div>
+                          {order.deliveryLink && (
+                            <a
+                              href={order.deliveryLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="delivery-tracking-link"
+                            >
+                              <i className="fas fa-truck"></i> Track Your Order
+                            </a>
+                          )}
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <div

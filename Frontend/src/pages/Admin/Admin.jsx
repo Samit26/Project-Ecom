@@ -179,14 +179,25 @@ const Admin = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, deliveryLink) => {
     try {
-      await adminService.updateOrderStatus(orderId, newStatus);
-      toast.success("Order status updated");
+      await adminService.updateOrderStatus(orderId, newStatus, deliveryLink);
+      toast.success("Order updated successfully");
       loadOrders();
     } catch (error) {
       console.error("Error updating order:", error);
-      toast.error("Failed to update order status");
+      toast.error("Failed to update order");
+    }
+  };
+
+  const handleDeliveryLinkUpdate = async (orderId, order) => {
+    const newLink = order.deliveryLink || "";
+    try {
+      await adminService.updateOrderStatus(orderId, order.orderStatus, newLink);
+      toast.success("Delivery link updated");
+    } catch (error) {
+      console.error("Error updating delivery link:", error);
+      toast.error("Failed to update delivery link");
     }
   };
   const loadPages = async () => {
@@ -571,6 +582,7 @@ const Admin = () => {
                   <th>Total</th>
                   <th>Payment</th>
                   <th>Status</th>
+                  <th>Delivery Link</th>
                   <th>Date</th>
                   <th>Actions</th>
                 </tr>
@@ -590,7 +602,11 @@ const Admin = () => {
                       <select
                         value={order.orderStatus}
                         onChange={(e) =>
-                          handleUpdateOrderStatus(order._id, e.target.value)
+                          handleUpdateOrderStatus(
+                            order._id,
+                            e.target.value,
+                            order.deliveryLink,
+                          )
                         }
                         className="status-select"
                       >
@@ -600,6 +616,34 @@ const Admin = () => {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
+                    </td>
+                    <td>
+                      <div className="delivery-link-input">
+                        <input
+                          type="text"
+                          placeholder="Paste tracking link..."
+                          defaultValue={order.deliveryLink || ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (order.deliveryLink || "")) {
+                              handleUpdateOrderStatus(
+                                order._id,
+                                order.orderStatus,
+                                e.target.value,
+                              );
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateOrderStatus(
+                                order._id,
+                                order.orderStatus,
+                                e.target.value,
+                              );
+                              e.target.blur();
+                            }
+                          }}
+                        />
+                      </div>
                     </td>
                     <td>{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td>
@@ -1095,7 +1139,7 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
     category: product?.category?._id || product?.category || "",
     originalPrice: product?.pricing?.originalPrice || "",
     offerPrice: product?.pricing?.offerPrice || "",
-    quantity: product?.stock?.quantity || "",
+    stock: product?.stock || "available",
     rating: product?.rating || 0,
     isFeatured: product?.isFeatured || false,
   });
@@ -1141,7 +1185,7 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
       formDataToSend.append("category", formData.category);
       formDataToSend.append("pricing[originalPrice]", formData.originalPrice);
       formDataToSend.append("pricing[offerPrice]", formData.offerPrice);
-      formDataToSend.append("stock", "available");
+      formDataToSend.append("stock", formData.stock);
       formDataToSend.append("rating", formData.rating);
       formDataToSend.append("isFeatured", formData.isFeatured);
 
@@ -1264,6 +1308,22 @@ const ProductFormModal = ({ product, onClose, onSave }) => {
                 }
                 required
               />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Stock Availability</label>
+              <select
+                value={formData.stock}
+                onChange={(e) =>
+                  setFormData({ ...formData, stock: e.target.value })
+                }
+                required
+              >
+                <option value="available">Available</option>
+                <option value="not available">Not Available</option>
+              </select>
             </div>
           </div>
 

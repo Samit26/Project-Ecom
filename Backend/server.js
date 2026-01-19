@@ -60,26 +60,39 @@ app.use(
 app.use(passportConfig.initialize());
 app.use(passportConfig.session());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
+// Rate limiting - General routes
+const generalLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 15 minutes
+  max: 800, // Limit each IP to 500 requests per 15 minutes
+  message: "Too many requests, please try again later.",
 });
-app.use("/api/", limiter);
+
+// Rate limiting - Admin routes (higher limit)
+const adminLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 15 minutes
+  max: 3000, // Higher limit for admin dashboard
+  message: "Too many requests, please try again later.",
+});
+
+// Rate limiting - Auth routes (stricter for security)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Prevent brute force attacks
+  message: "Too many login attempts, please try again later.",
+});
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/cart", cartRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/pages", pageRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/admin/promo-codes", promoCodeRoutes);
-app.use("/api/promo-codes", promoCodeRoutes);
-app.use("/api/shipping-config", shippingConfigRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/products", generalLimiter, productRoutes);
+app.use("/api/cart", generalLimiter, cartRoutes);
+app.use("/api/orders", generalLimiter, orderRoutes);
+app.use("/api/users", generalLimiter, userRoutes);
+app.use("/api/admin", adminLimiter, adminRoutes);
+app.use("/api/pages", generalLimiter, pageRoutes);
+app.use("/api/categories", generalLimiter, categoryRoutes);
+app.use("/api/admin/promo-codes", adminLimiter, promoCodeRoutes);
+app.use("/api/promo-codes", generalLimiter, promoCodeRoutes);
+app.use("/api/shipping-config", generalLimiter, shippingConfigRoutes);
 app.use("/api/admin/shipping-config", shippingConfigRoutes);
 
 // Root route

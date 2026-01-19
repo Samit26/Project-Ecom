@@ -88,7 +88,7 @@ export const getAllOrders = async (req, res) => {
 // @access  Private/Admin
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { orderStatus } = req.body;
+    const { orderStatus, deliveryLink } = req.body;
 
     if (!orderStatus) {
       return res.status(400).json({
@@ -107,17 +107,20 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     order.orderStatus = orderStatus;
+    if (deliveryLink !== undefined) {
+      order.deliveryLink = deliveryLink;
+    }
     await order.save();
 
     res.json({
       success: true,
-      message: "Order status updated successfully",
+      message: "Order updated successfully",
       data: order,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error updating order status",
+      message: "Error updating order",
       error: error.message,
     });
   }

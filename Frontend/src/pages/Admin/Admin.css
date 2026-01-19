@@ -276,6 +276,33 @@ tbody tr:hover {
   border-color: var(--primary-orange);
 }
 
+/* Delivery Link Input */
+.delivery-link-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delivery-link-input input {
+  padding: 0.4rem 0.6rem;
+  background-color: var(--dark-bg);
+  color: var(--text-light);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  width: 150px;
+}
+
+.delivery-link-input input:focus {
+  outline: none;
+  border-color: var(--primary-orange);
+}
+
+.delivery-link-input input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
