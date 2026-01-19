@@ -1,5 +1,9 @@
 import PageContent from "../models/PageContent.js";
 import ContactForm from "../models/ContactForm.js";
+import {
+  sendContactFormNotification,
+  sendContactFormAutoReply,
+} from "../utils/emailHelper.js";
 import nodemailer from "nodemailer";
 
 // @desc    Get page content by type
@@ -71,7 +75,7 @@ export const updatePageContent = async (req, res) => {
       pageContent = await PageContent.findOneAndUpdate(
         { pageType },
         updateData,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
     }
 
@@ -96,35 +100,43 @@ export const submitContactForm = async (req, res) => {
   try {
     const { name, email, phone, subject, message } = req.body;
 
+    // Remove hyphens and formatting from phone number if provided
+    const cleanedPhone = phone ? phone.replace(/[-\s()]/g, "") : "";
+
     // Save to database
     const contactSubmission = await ContactForm.create({
       name,
       email,
-      phone,
+      phone: cleanedPhone,
       subject,
       message,
     });
 
-    // Send email notification (configure your email service)
-    // For now, we'll just log it
-    // You can configure nodemailer here to send actual emails
     console.log("Contact form submitted:", contactSubmission);
 
-    // Optional: Send email to admin
-    // const transporter = nodemailer.createTransport({
-    //   service: 'gmail',
-    //   auth: {
-    //     user: process.env.EMAIL_USER,
-    //     pass: process.env.EMAIL_PASS
-    //   }
-    // });
-    //
-    // await transporter.sendMail({
-    //   from: email,
-    //   to: process.env.ADMIN_EMAIL,
-    //   subject: `Contact Form: ${subject}`,
-    //   text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`
-    // });
+    // Send email notification to admin
+    const emailResult = await sendContactFormNotification({
+      name,
+      email,
+      phone: cleanedPhone,
+      subject,
+      message,
+    });
+
+    // Send auto-reply to customer
+    await sendContactFormAutoReply({
+      name,
+      email,
+      phone: cleanedPhone,
+      subject,
+      message,
+    });
+
+    if (emailResult.success) {
+      console.log("Admin notification email sent successfully");
+    } else {
+      console.error("Failed to send admin notification email");
+    }
 
     res.json({
       success: true,
@@ -171,7 +183,7 @@ export const updateContactSubmission = async (req, res) => {
     const submission = await ContactForm.findByIdAndUpdate(
       id,
       { status },
-      { new: true }
+      { new: true },
     );
 
     if (!submission) {

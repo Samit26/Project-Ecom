@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import { productService } from "../../services/apiService";
 import { useCart } from "../../context/CartContext";
 import "./ProductDetail.css";
@@ -11,7 +12,8 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [notification, setNotification] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [expandedSection, setExpandedSection] = useState(null);
 
   useEffect(() => {
     fetchProduct();
@@ -33,14 +35,32 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product);
-      showNotification(`${product.name} added to cart!`);
+      for (let i = 0; i < quantity; i++) {
+        addToCart(product);
+      }
+      toast.success(`${quantity} x ${product.name} added to cart!`);
     }
   };
 
-  const showNotification = (message) => {
-    setNotification(message);
-    setTimeout(() => setNotification(""), 3000);
+  const handleBuyNow = () => {
+    if (product) {
+      for (let i = 0; i < quantity; i++) {
+        addToCart(product);
+      }
+      navigate("/cart");
+    }
+  };
+
+  const incrementQuantity = () => {
+    setQuantity((prev) => prev + 1);
+  };
+
+  const decrementQuantity = () => {
+    setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
   };
 
   const generateStarRating = (rating) => {
@@ -80,11 +100,17 @@ const ProductDetail = () => {
 
   return (
     <div className="page product-detail-page">
-      <button className="back-btn" onClick={() => navigate("/products")}>
-        <i className="fas fa-arrow-left"></i> Back to Products
-      </button>
+      {/* Breadcrumb Navigation */}
+      <div className="breadcrumb">
+        <Link to="/">Home</Link>
+        <span className="separator">/</span>
+        <Link to="/products">{product.category?.name || "Products"}</Link>
+        <span className="separator">/</span>
+        <span className="current">{product.name}</span>
+      </div>
 
-      <div className="product-detail">
+      <div className="product-detail-container">
+        {/* Product Gallery */}
         <div className="product-gallery">
           <div className="main-image">
             <img
@@ -94,87 +120,253 @@ const ProductDetail = () => {
             {product.stock === "not available" && (
               <div className="out-of-stock-badge">Out of Stock</div>
             )}
+            {/* Mobile Navigation Buttons */}
+            {product.images && product.images.length > 1 && (
+              <>
+                <div className="main-image-nav prev">
+                  <button
+                    onClick={() =>
+                      setSelectedImage((prev) =>
+                        prev > 0 ? prev - 1 : product.images.length - 1,
+                      )
+                    }
+                    aria-label="Previous image"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                </div>
+                <div className="main-image-nav next">
+                  <button
+                    onClick={() =>
+                      setSelectedImage((prev) =>
+                        prev < product.images.length - 1 ? prev + 1 : 0,
+                      )
+                    }
+                    aria-label="Next image"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           {product.images && product.images.length > 1 && (
-            <div className="thumbnail-images">
-              {product.images.map((image, index) => (
-                <img
+            <div className="thumbnail-carousel">
+              <button
+                className="carousel-btn prev"
+                onClick={() =>
+                  setSelectedImage((prev) =>
+                    prev > 0 ? prev - 1 : product.images.length - 1,
+                  )
+                }
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              <div className="thumbnail-images">
+                {product.images.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`${product.name} ${index + 1}`}
+                    className={selectedImage === index ? "active" : ""}
+                    onClick={() => setSelectedImage(index)}
+                  />
+                ))}
+              </div>
+              <button
+                className="carousel-btn next"
+                onClick={() =>
+                  setSelectedImage((prev) =>
+                    prev < product.images.length - 1 ? prev + 1 : 0,
+                  )
+                }
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          )}
+          {/* Dots indicator for mobile */}
+          {product.images && product.images.length > 1 && (
+            <div className="carousel-dots">
+              {product.images.map((_, index) => (
+                <span
                   key={index}
-                  src={image}
-                  alt={`${product.name} ${index + 1}`}
-                  className={selectedImage === index ? "active" : ""}
+                  className={`dot ${selectedImage === index ? "active" : ""}`}
                   onClick={() => setSelectedImage(index)}
-                />
+                ></span>
               ))}
             </div>
           )}
         </div>
 
-        <div className="product-details-info">
-          <div className="product-category">{product.category}</div>
+        {/* Product Info */}
+        <div className="product-info">
           <h1 className="product-title">{product.name}</h1>
 
-          <div className="product-rating">
-            {generateStarRating(product.rating)}
-            <span className="rating-text">({product.rating} / 5)</span>
-          </div>
-
-          <div className="product-pricing">
-            {product.pricing?.originalPrice > product.pricing?.offerPrice && (
-              <span className="original-price">
-                ₹{product.pricing.originalPrice}
-              </span>
-            )}
-            <span className="offer-price">₹{product.pricing?.offerPrice}</span>
-            {product.pricing?.originalPrice > product.pricing?.offerPrice && (
-              <span className="discount">
-                {Math.round(
-                  ((product.pricing.originalPrice -
-                    product.pricing.offerPrice) /
-                    product.pricing.originalPrice) *
-                    100
-                )}
-                % OFF
-              </span>
-            )}
-          </div>
-
-          <div className="product-stock">
-            <span
-              className={`stock-status ${
-                product.stock === "available" ? "in-stock" : "out-of-stock"
-              }`}
-            >
-              {product.stock === "available" ? (
-                <>
-                  <i className="fas fa-check-circle"></i> In Stock
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-times-circle"></i> Out of Stock
-                </>
-              )}
+          <div className="product-rating-review">
+            <div className="stars">{generateStarRating(product.rating)}</div>
+            <span className="review-count">
+              ({product.reviewCount || 124} Reviews)
             </span>
           </div>
 
-          <div className="product-description">
-            <h3>Description</h3>
+          <div className="product-pricing">
+            <span className="current-price">
+              ₹{product.pricing?.offerPrice}
+            </span>
+            {product.pricing?.originalPrice > product.pricing?.offerPrice && (
+              <>
+                <span className="original-price">
+                  ₹{product.pricing.originalPrice}
+                </span>
+                <span className="discount-badge">
+                  {Math.round(
+                    ((product.pricing.originalPrice -
+                      product.pricing.offerPrice) /
+                      product.pricing.originalPrice) *
+                      100,
+                  )}
+                  % OFF
+                </span>
+              </>
+            )}
+          </div>
+
+          <div className="product-short-description">
             <p>{product.description}</p>
           </div>
 
-          <div className="product-actions-detail">
+          {/* Quantity Selector */}
+          <div className="quantity-section">
+            <label>Quantity</label>
+            <div className="quantity-selector">
+              <button className="qty-btn" onClick={decrementQuantity}>
+                <i className="fas fa-minus"></i>
+              </button>
+              <input type="number" value={quantity} readOnly />
+              <button className="qty-btn" onClick={incrementQuantity}>
+                <i className="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="product-actions">
             <button
-              className="btn add-to-cart-btn"
+              className="btn-add-to-cart"
               onClick={handleAddToCart}
               disabled={product.stock !== "available"}
             >
-              <i className="fas fa-shopping-cart"></i> Add to Cart
+              Add to Cart
             </button>
+            <button
+              className="btn-buy-now"
+              onClick={handleBuyNow}
+              disabled={product.stock !== "available"}
+            >
+              Buy It Now
+            </button>
+          </div>
+
+          {/* Collapsible Sections */}
+          <div className="collapsible-sections">
+            <div className="section-item">
+              <button
+                className="section-header"
+                onClick={() => toggleSection("details")}
+              >
+                <span>Product Details</span>
+                <i
+                  className={`fas fa-chevron-${expandedSection === "details" ? "up" : "down"}`}
+                ></i>
+              </button>
+              {expandedSection === "details" && (
+                <div className="section-content">
+                  <p>{product.description}</p>
+                  {product.features && (
+                    <ul>
+                      {product.features.map((feature, idx) => (
+                        <li key={idx}>{feature}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="section-item">
+              <button
+                className="section-header"
+                onClick={() => toggleSection("specifications")}
+              >
+                <span>Specifications</span>
+                <i
+                  className={`fas fa-chevron-${expandedSection === "specifications" ? "up" : "down"}`}
+                ></i>
+              </button>
+              {expandedSection === "specifications" && (
+                <div className="section-content">
+                  <table className="specs-table">
+                    <tbody>
+                      <tr>
+                        <td>Category</td>
+                        <td>{product.category?.name || "N/A"}</td>
+                      </tr>
+                      <tr>
+                        <td>Stock Status</td>
+                        <td>
+                          {product.stock === "available"
+                            ? "In Stock"
+                            : "Out of Stock"}
+                        </td>
+                      </tr>
+                      {product.specifications &&
+                        Object.entries(product.specifications).map(
+                          ([key, value]) => (
+                            <tr key={key}>
+                              <td>{key}</td>
+                              <td>{value}</td>
+                            </tr>
+                          ),
+                        )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="section-item">
+              <button
+                className="section-header"
+                onClick={() => toggleSection("shipping")}
+              >
+                <span>Shipping & Returns</span>
+                <i
+                  className={`fas fa-chevron-${expandedSection === "shipping" ? "up" : "down"}`}
+                ></i>
+              </button>
+              {expandedSection === "shipping" && (
+                <div className="section-content">
+                  <p>
+                    <strong>Free Shipping:</strong> On orders above ₹500
+                  </p>
+                  <p>
+                    <strong>Delivery Time:</strong> 5-7 business days
+                  </p>
+                  <p>
+                    <strong>Returns:</strong> 7-day return policy. Items must be
+                    unused and in original packaging.
+                  </p>
+                  <p>
+                    <strong>Refunds:</strong> Processed within 5-7 business days
+                    after receiving the returned item.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
-      {notification && <div className="notification">{notification}</div>}
     </div>
   );
 };

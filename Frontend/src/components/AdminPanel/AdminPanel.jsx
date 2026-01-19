@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import { adminService } from "../../services/apiService";
 import "./AdminPanel.css";
 
@@ -18,13 +19,32 @@ const AdminPanel = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Order management states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
   // Fetch dashboard stats when component mounts
   useEffect(() => {
     fetchDashboardStats();
     if (activeSection === "dashboard") {
       fetchRecentOrders();
+    } else if (activeSection === "orders") {
+      fetchAllOrders();
     }
   }, [activeSection]);
+
+  // Fetch orders when filters change
+  useEffect(() => {
+    if (activeSection === "orders") {
+      fetchAllOrders();
+    }
+  }, [currentPage, statusFilter, searchQuery, startDate, endDate]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -50,6 +70,75 @@ const AdminPanel = ({ onClose }) => {
     } catch (error) {
       console.error("Error fetching orders:", error);
     }
+  };
+
+  const fetchAllOrders = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: 10,
+      };
+
+      if (statusFilter) {
+        params.orderStatus = statusFilter;
+      }
+
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      if (startDate) {
+        params.startDate = startDate;
+      }
+
+      if (endDate) {
+        params.endDate = endDate;
+      }
+
+      const response = await adminService.getAllOrders(params);
+      if (response.success) {
+        setOrders(response.data);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setTotalOrders(response.pagination?.totalItems || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setError("Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    try {
+      setUpdatingOrderId(orderId);
+      const response = await adminService.updateOrderStatus(orderId, newStatus);
+      if (response.success) {
+        // Refresh orders
+        fetchAllOrders();
+        fetchDashboardStats();
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast.error("Failed to update order status");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchAllOrders();
+  };
+
+  const handleFilterReset = () => {
+    setStatusFilter("");
+    setSearchQuery("");
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
   };
 
   const formatCurrency = (amount) => {
@@ -264,18 +353,194 @@ const AdminPanel = ({ onClose }) => {
           {/* Other Sections */}
           {activeSection === "orders" && (
             <div className="admin-section">
-              <div className="coming-soon">
-                <i
-                  className="fas fa-shopping-cart"
-                  style={{
-                    fontSize: "4rem",
-                    color: "#ccc",
-                    marginBottom: "20px",
-                  }}
-                ></i>
-                <h3>Order Management</h3>
-                <p>This feature is coming soon!</p>
+              <div className="orders-filters">
+                <form onSubmit={handleSearchSubmit} className="search-form">
+                  <div className="search-input-group">
+                    <i className="fas fa-search"></i>
+                    <input
+                      type="text"
+                      placeholder="Search by Order Number..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="btn-search">
+                    Search
+                  </button>
+                </form>
+
+                <div className="filter-group">
+                  <div className="filter-item">
+                    <label>Status</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <option value="">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-item">
+                    <label>Start Date</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </div>
+
+                  <div className="filter-item">
+                    <label>End Date</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </div>
+
+                  <button className="btn-reset" onClick={handleFilterReset}>
+                    <i className="fas fa-redo"></i> Reset
+                  </button>
+                </div>
               </div>
+
+              <div className="orders-summary">
+                <p>
+                  Showing {orders.length} of {totalOrders} orders
+                </p>
+              </div>
+
+              {loading ? (
+                <div className="loading-spinner">
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <p>Loading orders...</p>
+                </div>
+              ) : error ? (
+                <div className="error-message">{error}</div>
+              ) : orders.length === 0 ? (
+                <div className="no-orders">
+                  <i className="fas fa-inbox"></i>
+                  <p>No orders found</p>
+                </div>
+              ) : (
+                <>
+                  <div className="orders-table-container">
+                    <table className="orders-table">
+                      <thead>
+                        <tr>
+                          <th>Order #</th>
+                          <th>Customer</th>
+                          <th>Date</th>
+                          <th>Items</th>
+                          <th>Amount</th>
+                          <th>Payment</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.map((order) => (
+                          <tr key={order._id}>
+                            <td className="order-number">
+                              {order.orderNumber}
+                            </td>
+                            <td>
+                              <div className="customer-info">
+                                <div className="customer-name">
+                                  {order.userId?.name || "N/A"}
+                                </div>
+                                <div className="customer-email">
+                                  {order.userId?.email || ""}
+                                </div>
+                              </div>
+                            </td>
+                            <td>{formatDate(order.createdAt)}</td>
+                            <td className="items-count">
+                              {order.items?.length || 0} items
+                            </td>
+                            <td className="order-amount">
+                              {formatCurrency(order.totalAmount)}
+                            </td>
+                            <td>
+                              <span
+                                className={`payment-badge ${order.paymentStatus}`}
+                              >
+                                {order.paymentStatus}
+                              </span>
+                            </td>
+                            <td>
+                              <select
+                                className={`status-select ${order.orderStatus}`}
+                                value={order.orderStatus}
+                                onChange={(e) =>
+                                  handleStatusUpdate(order._id, e.target.value)
+                                }
+                                disabled={updatingOrderId === order._id}
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="processing">Processing</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </td>
+                            <td>
+                              <button
+                                className="btn-view"
+                                onClick={() =>
+                                  toast.info(
+                                    `Order ${order.orderNumber} - Status: ${order.status}`,
+                                  )
+                                }
+                              >
+                                <i className="fas fa-eye"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage((prev) => prev - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <i className="fas fa-chevron-left"></i> Previous
+                      </button>
+
+                      <div className="pagination-info">
+                        Page {currentPage} of {totalPages}
+                      </div>
+
+                      <button
+                        className="pagination-btn"
+                        onClick={() => setCurrentPage((prev) => prev + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next <i className="fas fa-chevron-right"></i>
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

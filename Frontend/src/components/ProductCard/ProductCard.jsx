@@ -1,12 +1,11 @@
 import { useCart } from "../../context/CartContext";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import "./ProductCard.css";
 
 const ProductCard = ({ product, badgeText }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
-  const [notification, setNotification] = useState("");
 
   const generateStarRating = (rating) => {
     const stars = [];
@@ -29,12 +28,7 @@ const ProductCard = ({ product, badgeText }) => {
   const handleAddToCart = (e) => {
     e.stopPropagation();
     addToCart(product);
-    showNotification(`${product.name} added to cart!`);
-  };
-
-  const showNotification = (message) => {
-    setNotification(message);
-    setTimeout(() => setNotification(""), 3000);
+    toast.success(`${product.name} added to cart!`);
   };
 
   const handleCardClick = () => {
@@ -59,14 +53,17 @@ const ProductCard = ({ product, badgeText }) => {
         <div className="product-info">
           <h3 className="product-name">{product.name}</h3>
           <div className="rating">
+            <span className="rating-number">{product.rating || 4.8}</span>
             {generateStarRating(product.rating || 0)}
-            <span className="rating-value">({product.rating || 0})</span>
+            <span className="rating-value">
+              ({product.rating || 4.8}) 150 Reviews
+            </span>
           </div>
           <div className="price">
+            <span className="current-price">₹{displayPrice}</span>
             {originalPrice && originalPrice > displayPrice && (
               <span className="old-price">₹{originalPrice}</span>
             )}
-            <span className="current-price">₹{displayPrice}</span>
           </div>
           <p className="product-description">
             {product.description?.length > 80
@@ -79,6 +76,7 @@ const ProductCard = ({ product, badgeText }) => {
               onClick={handleAddToCart}
               disabled={product.stock === "not available"}
             >
+              <i className="fas fa-shopping-cart"></i>
               {product.stock === "not available"
                 ? "Out of Stock"
                 : "Add to Cart"}
@@ -86,8 +84,6 @@ const ProductCard = ({ product, badgeText }) => {
           </div>
         </div>
       </div>
-
-      {notification && <div className="notification">{notification}</div>}
     </>
   );
 };

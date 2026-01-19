@@ -1,19 +1,37 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useCart } from "../../context/CartContext";
 import { useUser } from "../../context/UserContext";
 import { useSearch } from "../../context/SearchContext";
+import { shippingConfigService } from "../../services/apiService";
 import "./Header.css";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const [shippingConfig, setShippingConfig] = useState(null);
   const { cartCount } = useCart();
   const { isLoggedIn, isAdmin, currentUser, loginWithGoogle, logout } =
     useUser();
   const { updateSearchQuery } = useSearch();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    loadShippingConfig();
+  }, []);
+
+  const loadShippingConfig = async () => {
+    try {
+      const response = await shippingConfigService.getShippingConfig();
+      if (response.success) {
+        setShippingConfig(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading shipping config:", error);
+    }
+  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -30,9 +48,9 @@ const Header = () => {
     if (isLoggedIn && isAdmin) {
       navigate("/admin");
     } else if (isLoggedIn) {
-      alert("You do not have admin access");
+      toast.warning("You do not have admin access");
     } else {
-      alert("Please login first");
+      toast.warning("Please login first");
     }
   };
 
@@ -62,7 +80,7 @@ const Header = () => {
         navigate("/products");
       }
     } else if (localSearchQuery.length > 0 && localSearchQuery.length < 3) {
-      alert("Please enter at least 3 characters to search");
+      toast.info("Please enter at least 3 characters to search");
     }
   };
 
@@ -77,7 +95,14 @@ const Header = () => {
     <header>
       <div className="header-top">
         <div className="container">
-          <div className="top-left">Free shipping on orders above ₹2000</div>
+          <div className="top-left">
+            {shippingConfig && (
+              <>
+                <i className="fas fa-shipping-fast"></i> Free shipping on orders
+                above ₹{shippingConfig.freeShippingThreshold}
+              </>
+            )}
+          </div>
           <div className="top-right">
             {isLoggedIn && isAdmin && (
               <a
@@ -130,6 +155,29 @@ const Header = () => {
           </Link>
 
           <nav className={mobileMenuOpen ? "active" : ""}>
+            <div className="mobile-menu-header">
+              <h3>Menu</h3>
+              <button
+                className="mobile-close-btn"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="mobile-search-box">
+              <input
+                type="text"
+                placeholder="Search for lights..."
+                value={localSearchQuery}
+                onChange={handleSearchInput}
+                onKeyPress={handleSearchKeyPress}
+              />
+              <button onClick={handleSearchClick}>
+                <i className="fas fa-search"></i>
+              </button>
+            </div>
+
             <ul>
               <li>
                 <Link

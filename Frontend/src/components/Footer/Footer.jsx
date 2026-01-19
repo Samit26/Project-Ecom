@@ -71,17 +71,22 @@ const Footer = () => {
             <h3>Contact Info</h3>
             <ul>
               <li>
-                <i className="fas fa-map-marker-alt"></i> 123 Lighting Street,
-                Mumbai, India
+                <i className="fas fa-map-marker-alt"></i>Add: 406, Apeksha
+                Nagar, Bamroli Road, Pandesara, Surat - 394221
               </li>
               <li>
-                <i className="fas fa-phone"></i> +91 98765 43210
+                <i className="fas fa-map-marker-alt"></i>Office: FF-11, Anaya
+                Business Center, Nr. D-Mart, VIP Road, Pandesara, Surat - 394221
               </li>
               <li>
-                <i className="fas fa-envelope"></i> info@ajeetlights.com
+                <i className="fas fa-phone"></i> +91 7405162060 / 9427766113
               </li>
               <li>
-                <i className="fas fa-clock"></i> Mon-Sat: 9:00 AM - 8:00 PM
+                <i className="fas fa-envelope"></i> ajeetlights@gmail.com
+              </li>
+              <li>
+                <i className="fas fa-clock"></i> Mon-Fri:9:30am to 7:00pm <br />
+                Sat : 9:30am to 6:00pm
               </li>
             </ul>
           </div>

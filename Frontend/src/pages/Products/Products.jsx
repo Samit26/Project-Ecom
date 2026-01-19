@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import ProductCard from "../../components/ProductCard/ProductCard";
-import { productService } from "../../services/apiService";
+import { productService, categoryService } from "../../services/apiService";
 import { useSearch } from "../../context/SearchContext";
 import "./Products.css";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
   const [localSearchQuery, setLocalSearchQuery] = useState("");
@@ -14,7 +16,23 @@ const Products = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const limit = 12;
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await categoryService.getAllCategories();
+        if (response.success) {
+          setCategories(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+    loadCategories();
+  }, []);
 
   // Sync with global search query from Header
   useEffect(() => {
@@ -76,7 +94,7 @@ const Products = () => {
     if (localSearchQuery.length >= 3) {
       updateSearchQuery(localSearchQuery);
     } else if (localSearchQuery.length > 0 && localSearchQuery.length < 3) {
-      alert("Please enter at least 3 characters to search");
+      toast.info("Please enter at least 3 characters to search");
     }
   };
 
@@ -103,11 +121,15 @@ const Products = () => {
   };
 
   const getBadgeText = (product) => {
-    if (product.category === "Smart Lighting") return "SMART";
-    if (product.category === "LED Lights") return "LED";
+    if (product.category?.name === "Smart Lighting") return "SMART";
+    if (product.category?.name === "LED Lights") return "LED";
     if (product.isFeatured) return "FEATURED";
     return "NEW";
   };
+
+  // Get visible categories (first 5)
+  const visibleCategories = categories.slice(0, 5);
+  const hiddenCategories = categories.slice(5);
 
   return (
     <div className="page">
@@ -154,38 +176,45 @@ const Products = () => {
           >
             All Products
           </button>
-          <button
-            className={`category-btn ${
-              activeCategory === "LED Lights" ? "active" : ""
-            }`}
-            onClick={() => handleCategoryChange("LED Lights")}
-          >
-            LED Lights
-          </button>
-          <button
-            className={`category-btn ${
-              activeCategory === "Smart Lighting" ? "active" : ""
-            }`}
-            onClick={() => handleCategoryChange("Smart Lighting")}
-          >
-            Smart Lighting
-          </button>
-          <button
-            className={`category-btn ${
-              activeCategory === "Decorative" ? "active" : ""
-            }`}
-            onClick={() => handleCategoryChange("Decorative")}
-          >
-            Decorative
-          </button>
-          <button
-            className={`category-btn ${
-              activeCategory === "Outdoor" ? "active" : ""
-            }`}
-            onClick={() => handleCategoryChange("Outdoor")}
-          >
-            Outdoor
-          </button>
+          {visibleCategories.map((category) => (
+            <button
+              key={category._id}
+              className={`category-btn ${
+                activeCategory === category.slug ? "active" : ""
+              }`}
+              onClick={() => handleCategoryChange(category.slug)}
+            >
+              {category.name}
+            </button>
+          ))}
+          {hiddenCategories.length > 0 && (
+            <div className="category-dropdown">
+              <button
+                className="category-btn more-btn"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+              >
+                <i className="fas fa-plus"></i> {hiddenCategories.length} More
+              </button>
+              {showAllCategories && (
+                <div className="category-dropdown-menu">
+                  {hiddenCategories.map((category) => (
+                    <button
+                      key={category._id}
+                      className={`category-dropdown-item ${
+                        activeCategory === category.slug ? "active" : ""
+                      }`}
+                      onClick={() => {
+                        handleCategoryChange(category.slug);
+                        setShowAllCategories(false);
+                      }}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

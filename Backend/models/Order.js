@@ -10,7 +10,6 @@ const orderSchema = new mongoose.Schema(
     orderNumber: {
       type: String,
       unique: true,
-      required: true,
     },
     items: [
       {
@@ -42,6 +41,26 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    subtotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    shippingFee: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    promoCode: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PromoCode",
+      default: null,
+    },
+    promoCodeDiscount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     shippingAddress: {
       name: {
         type: String,
@@ -51,25 +70,33 @@ const orderSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
+      address: {
+        type: String,
+        default: "",
+      },
       street: {
         type: String,
-        required: true,
+        default: "",
       },
       city: {
         type: String,
-        required: true,
+        default: "",
       },
       state: {
         type: String,
-        required: true,
+        default: "",
+      },
+      pincode: {
+        type: String,
+        default: "",
       },
       zipCode: {
         type: String,
-        required: true,
+        default: "",
       },
       country: {
         type: String,
-        required: true,
+        default: "India",
       },
     },
     paymentMethod: {
@@ -93,7 +120,7 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Generate order number before saving

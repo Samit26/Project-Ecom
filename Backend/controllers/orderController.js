@@ -1,30 +1,55 @@
 import Order from "../models/Order.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
+import PromoCode from "../models/PromoCode.js";
+import ShippingConfig from "../models/ShippingConfig.js";
+import User from "../models/User.js";
 import { createPaymentOrder, verifyPayment } from "../utils/paymentHelper.js";
+import {
+  sendOrderNotificationToAdmin,
+  sendOrderConfirmationToCustomer,
+} from "../utils/emailHelper.js";
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 export const createOrder = async (req, res) => {
   try {
-    const { shippingAddress } = req.body;
+    const { shippingAddress, promoCode } = req.body;
+
+    console.log("Received order request:", JSON.stringify(req.body, null, 2));
 
     // Validate shipping address
-    if (
-      !shippingAddress ||
-      !shippingAddress.name ||
-      !shippingAddress.phoneNumber
-    ) {
+    if (!shippingAddress) {
       return res.status(400).json({
         success: false,
-        message: "Shipping address with name and phone number is required",
+        message: "Shipping address is required",
       });
     }
 
+    if (!shippingAddress.name || !shippingAddress.name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipient name is required in shipping address",
+      });
+    }
+
+    if (!shippingAddress.phoneNumber || !shippingAddress.phoneNumber.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required in shipping address",
+      });
+    }
+
+    // Remove hyphens, spaces, and other formatting characters from phone number
+    shippingAddress.phoneNumber = shippingAddress.phoneNumber.replace(
+      /[-\s()]/g,
+      "",
+    );
+
     // Get user's cart
     const cart = await Cart.findOne({ userId: req.user.id }).populate(
-      "items.productId"
+      "items.productId",
     );
 
     if (!cart || cart.items.length === 0) {
@@ -37,13 +62,10 @@ export const createOrder = async (req, res) => {
     // Verify stock availability for all items
     for (const item of cart.items) {
       const product = await Product.findById(item.productId);
-      if (
-        !product.stock.isAvailable ||
-        product.stock.quantity < item.quantity
-      ) {
+      if (product.stock !== "available") {
         return res.status(400).json({
           success: false,
-          message: `${product.name} is out of stock or insufficient quantity`,
+          message: `${product.name} is out of stock`,
         });
       }
     }
@@ -57,11 +79,68 @@ export const createOrder = async (req, res) => {
       image: item.productId.images[0] || "",
     }));
 
+    // Calculate subtotal
+    const subtotal = cart.totalAmount;
+
+    // Apply promo code if provided
+    let promoCodeDiscount = 0;
+    let promoCodeId = null;
+    if (promoCode) {
+      const promo = await PromoCode.findOne({
+        code: promoCode.toUpperCase(),
+        isActive: true,
+      });
+
+      if (promo) {
+        const now = new Date();
+        if (
+          now >= promo.validFrom &&
+          now <= promo.validUntil &&
+          subtotal >= promo.minOrderAmount &&
+          (!promo.usageLimit || promo.usedCount < promo.usageLimit)
+        ) {
+          if (promo.discountType === "percentage") {
+            promoCodeDiscount = (subtotal * promo.discountValue) / 100;
+            if (promo.maxDiscountAmount) {
+              promoCodeDiscount = Math.min(
+                promoCodeDiscount,
+                promo.maxDiscountAmount,
+              );
+            }
+          } else {
+            promoCodeDiscount = promo.discountValue;
+          }
+          promoCodeId = promo._id;
+
+          // Increment usage count
+          await PromoCode.findByIdAndUpdate(promo._id, {
+            $inc: { usedCount: 1 },
+          });
+        }
+      }
+    }
+
+    // Calculate shipping fee
+    const shippingConfig = await ShippingConfig.findOne({ isActive: true });
+    const amountAfterDiscount = subtotal - promoCodeDiscount;
+    const shippingFee =
+      shippingConfig &&
+      amountAfterDiscount >= shippingConfig.freeShippingThreshold
+        ? 0
+        : shippingConfig?.baseShippingFee || 50;
+
+    // Calculate total
+    const totalAmount = amountAfterDiscount + shippingFee;
+
     // Create order
     const order = await Order.create({
       userId: req.user.id,
       items: orderItems,
-      totalAmount: cart.totalAmount,
+      subtotal,
+      shippingFee,
+      promoCode: promoCodeId,
+      promoCodeDiscount: Math.round(promoCodeDiscount),
+      totalAmount: Math.round(totalAmount),
       shippingAddress,
       paymentStatus: "pending",
       orderStatus: "pending",
@@ -70,9 +149,12 @@ export const createOrder = async (req, res) => {
     // Update product stock
     for (const item of cart.items) {
       await Product.findByIdAndUpdate(item.productId._id, {
-        $inc: { "stock.quantity": -item.quantity },
+        stock: "available", // Stock management simplified
       });
     }
+
+    // Don't clear the cart yet - only clear after successful payment
+    // Cart will be cleared by frontend after payment confirmation
 
     res.status(201).json({
       success: true,
@@ -80,6 +162,7 @@ export const createOrder = async (req, res) => {
       data: order,
     });
   } catch (error) {
+    console.error("Error creating order:", error);
     res.status(500).json({
       success: false,
       message: "Error creating order",
@@ -117,7 +200,7 @@ export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate(
       "items.productId",
-      "name images"
+      "name images",
     );
 
     if (!order) {
@@ -186,7 +269,7 @@ export const processPayment = async (req, res) => {
         email: req.user.email,
         phone: order.shippingAddress.phoneNumber,
         name: order.shippingAddress.name,
-      }
+      },
     );
 
     if (!paymentResult.success) {
@@ -241,19 +324,49 @@ export const verifyPaymentStatus = async (req, res) => {
 
     const payments = verificationResult.data;
     const successfulPayment = payments.find(
-      (p) => p.payment_status === "SUCCESS"
+      (p) => p.payment_status === "SUCCESS",
     );
 
     if (successfulPayment) {
       order.paymentStatus = "completed";
       order.paymentId = successfulPayment.cf_payment_id;
-      order.orderStatus = "processing";
+      // Only set to processing if order is currently pending
+      // Don't overwrite shipped/delivered/cancelled statuses
+      if (order.orderStatus === "pending") {
+        order.orderStatus = "processing";
+      }
       await order.save();
 
       // Clear user's cart
       await Cart.findOneAndUpdate(
         { userId: req.user.id },
-        { items: [], totalAmount: 0 }
+        { items: [], totalAmount: 0 },
+      );
+
+      // Get user details for email
+      const user = await User.findById(req.user.id);
+
+      // Prepare email data
+      const emailData = {
+        orderNumber: order.orderNumber,
+        createdAt: order.createdAt,
+        paymentStatus: order.paymentStatus,
+        orderStatus: order.orderStatus,
+        items: order.items,
+        subtotal: order.subtotal,
+        shippingFee: order.shippingFee,
+        promoCodeDiscount: order.promoCodeDiscount || 0,
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        customerEmail: user.email,
+      };
+
+      // Send emails (don't wait for them, send async)
+      sendOrderNotificationToAdmin(emailData).catch((error) =>
+        console.error("Failed to send admin notification:", error),
+      );
+      sendOrderConfirmationToCustomer(emailData).catch((error) =>
+        console.error("Failed to send customer confirmation:", error),
       );
 
       res.json({

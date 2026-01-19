@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import { useUser } from "../../context/UserContext";
 import { useCart } from "../../context/CartContext";
 import { orderService, userService } from "../../services/apiService";
@@ -8,11 +9,15 @@ const Profile = () => {
   const { currentUser, isLoggedIn } = useUser();
   const { wishlist, addToCart, toggleWishlist } = useCart();
   const [activeSection, setActiveSection] = useState(
-    isLoggedIn ? "profile" : "orders"
+    isLoggedIn ? "profile" : "orders",
   );
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
   const [formData, setFormData] = useState({
     name: "",
     phoneNumber: "",
@@ -46,6 +51,13 @@ const Profile = () => {
       });
     }
   }, [currentUser]);
+
+  // Reset to page 1 when switching to orders section
+  useEffect(() => {
+    if (activeSection === "orders") {
+      setCurrentPage(1);
+    }
+  }, [activeSection]);
 
   const fetchOrders = async () => {
     try {
@@ -87,7 +99,12 @@ const Profile = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await userService.updateProfile(formData);
+      // Remove hyphens and formatting from phone number before sending
+      const dataToSend = {
+        ...formData,
+        phoneNumber: formData.phoneNumber.replace(/[-\s()]/g, ""),
+      };
+      const response = await userService.updateProfile(dataToSend);
       if (response.success) {
         // Update local storage with new user data
         const updatedUser = response.data;
@@ -105,7 +122,7 @@ const Profile = () => {
           },
         });
 
-        alert("Profile updated successfully!");
+        toast.success("Profile updated successfully!");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -212,6 +229,7 @@ const Profile = () => {
                     disabled
                     style={{
                       backgroundColor: "#0f0f0fff",
+                      color: "#ffffffff",
                       cursor: "not-allowed",
                     }}
                   />
@@ -284,18 +302,6 @@ const Profile = () => {
                   />
                 </div>
 
-                {/* <div className="form-group">
-                  <label htmlFor="address.country">Country</label>
-                  <input
-                    type="text"
-                    id="address.country"
-                    name="address.country"
-                    placeholder="Enter country"
-                    value={formData.address.country}
-                    onChange={handleInputChange}
-                  />
-                </div> */}
-
                 <div className="form-group">
                   <button type="submit" className="btn" disabled={loading}>
                     {loading ? "Saving..." : "Save Changes"}
@@ -318,6 +324,20 @@ const Profile = () => {
                 </div>
               )}
 
+              {!loading && orders.length > 0 && (
+                <div className="orders-summary">
+                  <p>
+                    Showing{" "}
+                    {Math.min(
+                      (currentPage - 1) * ordersPerPage + 1,
+                      orders.length,
+                    )}{" "}
+                    - {Math.min(currentPage * ordersPerPage, orders.length)} of{" "}
+                    {orders.length} orders
+                  </p>
+                </div>
+              )}
+
               <div className="order-list">
                 {!loading && orders.length === 0 ? (
                   <p
@@ -330,52 +350,97 @@ const Profile = () => {
                     No orders yet
                   </p>
                 ) : (
-                  orders.map((order) => (
-                    <div key={order._id} className="order-card">
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ marginBottom: "5px" }}>
-                          Order #{order._id.slice(-8)}
-                        </h3>
-                        <div style={{ color: "#666", marginBottom: "10px" }}>
-                          Placed on {formatDate(order.createdAt)} •{" "}
-                          {order.items.length} item(s)
+                  orders
+                    .slice(
+                      (currentPage - 1) * ordersPerPage,
+                      currentPage * ordersPerPage,
+                    )
+                    .map((order) => (
+                      <div key={order._id} className="order-card">
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ marginBottom: "5px" }}>
+                            Order #{order._id.slice(-8)}
+                          </h3>
+                          <div style={{ color: "#666", marginBottom: "10px" }}>
+                            Placed on {formatDate(order.createdAt)} •{" "}
+                            {order.items.length} item(s)
+                          </div>
+                          <div
+                            className={`order-status status-${order.orderStatus}`}
+                          >
+                            {formatOrderStatus(order.orderStatus)}
+                          </div>
                         </div>
-                        <div
-                          className={`order-status status-${order.orderStatus}`}
-                        >
-                          {formatOrderStatus(order.orderStatus)}
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            style={{
+                              fontWeight: "700",
+                              fontSize: "1.2rem",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            ₹{order.totalAmount}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.9rem",
+                              color: "#666",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            Payment: {formatOrderStatus(order.paymentStatus)}
+                          </div>
+                          <button
+                            className="btn"
+                            style={{ padding: "8px 15px", fontSize: "0.9rem" }}
+                            onClick={() =>
+                              (window.location.href = `/order-confirmation/${order.orderNumber}`)
+                            }
+                          >
+                            View Details
+                          </button>
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div
-                          style={{
-                            fontWeight: "700",
-                            fontSize: "1.2rem",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          ₹{order.totalAmount}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "0.9rem",
-                            color: "#666",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          Payment: {formatOrderStatus(order.paymentStatus)}
-                        </div>
-                        <button
-                          className="btn"
-                          style={{ padding: "8px 15px", fontSize: "0.9rem" }}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    ))
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {!loading && orders.length > ordersPerPage && (
+                <div className="pagination-controls">
+                  <button
+                    className="pagination-btn"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPage === 1}
+                  >
+                    <i className="fas fa-chevron-left"></i> Previous
+                  </button>
+
+                  <span className="pagination-info">
+                    Page {currentPage} of{" "}
+                    {Math.ceil(orders.length / ordersPerPage)}
+                  </span>
+
+                  <button
+                    className="pagination-btn"
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(
+                          Math.ceil(orders.length / ordersPerPage),
+                          prev + 1,
+                        ),
+                      )
+                    }
+                    disabled={
+                      currentPage === Math.ceil(orders.length / ordersPerPage)
+                    }
+                  >
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

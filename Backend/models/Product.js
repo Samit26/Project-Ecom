@@ -46,8 +46,8 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
     category: {
-      type: String,
-      enum: ["LED Lights", "Smart Lighting", "Decorative", "Outdoor"],
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
       required: [true, "Category is required"],
     },
     isFeatured: {
@@ -57,7 +57,7 @@ const productSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Index for search and filter

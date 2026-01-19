@@ -79,8 +79,8 @@ export const cartService = {
 // Order Services
 export const orderService = {
   // Create order
-  createOrder: async (shippingAddress) => {
-    const response = await api.post("/orders", { shippingAddress });
+  createOrder: async (orderData) => {
+    const response = await api.post("/orders", orderData);
     return response.data;
   },
 
@@ -208,6 +208,118 @@ export const pageService = {
     const response = await api.put(`/pages/contact/submissions/${id}`, {
       status,
     });
+    return response.data;
+  },
+};
+
+// Category Services
+export const categoryService = {
+  // Get all categories (public)
+  getAllCategories: async (includeInactive = false) => {
+    const response = await api.get("/categories", {
+      params: { includeInactive },
+    });
+    return response.data;
+  },
+
+  // Get single category
+  getCategory: async (id) => {
+    const response = await api.get(`/categories/${id}`);
+    return response.data;
+  },
+
+  // Admin: Create category
+  createCategory: async (data) => {
+    const response = await api.post("/categories", data);
+    return response.data;
+  },
+
+  // Admin: Update category
+  updateCategory: async (id, data) => {
+    const response = await api.put(`/categories/${id}`, data);
+    return response.data;
+  },
+
+  // Admin: Delete category
+  deleteCategory: async (id) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+
+  // Admin: Toggle category status
+  toggleCategoryStatus: async (id) => {
+    const response = await api.patch(`/categories/${id}/toggle-status`);
+    return response.data;
+  },
+};
+
+// Promo Code Services
+export const promoCodeService = {
+  // Validate promo code
+  validatePromoCode: async (code, orderAmount) => {
+    const response = await api.post("/promo-codes/validate", {
+      code,
+      orderAmount,
+    });
+    return response.data;
+  },
+
+  // Get homepage promo code (public)
+  getHomePagePromoCode: async () => {
+    const response = await api.get("/promo-codes/homepage");
+    return response.data;
+  },
+
+  // Admin: Get all promo codes
+  getAllPromoCodes: async () => {
+    const response = await api.get("/admin/promo-codes");
+    return response.data;
+  },
+
+  // Admin: Create promo code
+  createPromoCode: async (data) => {
+    const response = await api.post("/admin/promo-codes", data);
+    return response.data;
+  },
+
+  // Admin: Update promo code
+  updatePromoCode: async (id, data) => {
+    const response = await api.put(`/admin/promo-codes/${id}`, data);
+    return response.data;
+  },
+
+  // Admin: Delete promo code
+  deletePromoCode: async (id) => {
+    const response = await api.delete(`/admin/promo-codes/${id}`);
+    return response.data;
+  },
+
+  // Admin: Toggle promo code status
+  togglePromoCodeStatus: async (id) => {
+    const response = await api.patch(`/admin/promo-codes/${id}/toggle`);
+    return response.data;
+  },
+};
+
+// Shipping Config Services
+export const shippingConfigService = {
+  // Get shipping config
+  getShippingConfig: async () => {
+    const response = await api.get("/shipping-config");
+    return response.data;
+  },
+
+  // Calculate shipping fee
+  calculateShippingFee: async (orderAmount) => {
+    const response = await api.post("/shipping-config/calculate", {
+      orderAmount,
+    });
+    return response.data;
+  },
+
+  // Admin: Update shipping config
+  updateShippingConfig: async (data) => {
+    const response = await api.put("/admin/shipping-config", data);
     return response.data;
   },
 };

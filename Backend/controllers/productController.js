@@ -1,5 +1,7 @@
 import Product from "../models/Product.js";
+import Category from "../models/Category.js";
 import { uploadMultipleImages } from "../utils/uploadHelper.js";
+import mongoose from "mongoose";
 
 // @desc    Get all products with filters and pagination
 // @route   GET /api/products
@@ -18,9 +20,16 @@ export const getAllProducts = async (req, res) => {
     // Build query
     const query = {};
 
-    // Category filter
+    // Category filter - support both ID and slug
     if (category) {
-      query.category = category;
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        query.category = category;
+      } else {
+        const categoryDoc = await Category.findOne({ slug: category });
+        if (categoryDoc) {
+          query.category = categoryDoc._id;
+        }
+      }
     }
 
     // Search filter
@@ -47,6 +56,7 @@ export const getAllProducts = async (req, res) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     const products = await Product.find(query)
+      .populate("category", "name slug")
       .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit));
@@ -75,7 +85,9 @@ export const getAllProducts = async (req, res) => {
 // @access  Public
 export const getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ isFeatured: true }).limit(4);
+    const products = await Product.find({ isFeatured: true })
+      .populate("category", "name slug")
+      .limit(4);
 
     res.json({
       success: true,
@@ -95,7 +107,10 @@ export const getFeaturedProducts = async (req, res) => {
 // @access  Public
 export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id).populate(
+      "category",
+      "name slug",
+    );
 
     if (!product) {
       return res.status(404).json({
@@ -123,6 +138,18 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const productData = req.body;
+
+    // Check featured product limit
+    if (productData.isFeatured === "true" || productData.isFeatured === true) {
+      const featuredCount = await Product.countDocuments({ isFeatured: true });
+      if (featuredCount >= 4) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot add more than 4 featured products. Please unmark another product first.",
+        });
+      }
+    }
 
     // Handle image uploads if files are present
     if (req.files && req.files.length > 0) {
@@ -162,16 +189,49 @@ export const updateProduct = async (req, res) => {
 
     const updateData = req.body;
 
+    // Check featured product limit when updating to featured
+    if (
+      (updateData.isFeatured === "true" || updateData.isFeatured === true) &&
+      !product.isFeatured
+    ) {
+      const featuredCount = await Product.countDocuments({ isFeatured: true });
+      if (featuredCount >= 4) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot add more than 4 featured products. Please unmark another product first.",
+        });
+      }
+    }
+
     // Handle image uploads if files are present
     if (req.files && req.files.length > 0) {
       const imageUrls = await uploadMultipleImages(req.files);
-      updateData.images = [...(product.images || []), ...imageUrls].slice(0, 9);
+
+      // If existingImages is provided, use it as base, otherwise keep all existing
+      let baseImages = product.images || [];
+      if (updateData.existingImages) {
+        try {
+          baseImages = JSON.parse(updateData.existingImages);
+        } catch (e) {
+          console.error("Error parsing existingImages:", e);
+        }
+      }
+
+      updateData.images = [...baseImages, ...imageUrls].slice(0, 9);
+    } else if (updateData.existingImages) {
+      // No new files but existing images were modified
+      try {
+        updateData.images = JSON.parse(updateData.existingImages);
+      } catch (e) {
+        console.error("Error parsing existingImages:", e);
+      }
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     res.json({
@@ -229,6 +289,18 @@ export const toggleFeatured = async (req, res) => {
         success: false,
         message: "Product not found",
       });
+    }
+
+    // If toggling to featured (from not featured), check limit
+    if (!product.isFeatured) {
+      const featuredCount = await Product.countDocuments({ isFeatured: true });
+      if (featuredCount >= 4) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot add more than 4 featured products. Please unmark another product first.",
+        });
+      }
     }
 
     product.isFeatured = !product.isFeatured;

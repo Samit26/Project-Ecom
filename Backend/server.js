@@ -18,6 +18,9 @@ import orderRoutes from "./routes/orderRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import pageRoutes from "./routes/pageRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import promoCodeRoutes from "./routes/promoCodeRoutes.js";
+import shippingConfigRoutes from "./routes/shippingConfigRoutes.js";
 
 // Initialize Express
 const app = express();
@@ -37,7 +40,7 @@ app.use(
   cors({
     origin: config.clientUrl,
     credentials: true,
-  })
+  }),
 );
 
 // Session configuration
@@ -50,7 +53,7 @@ app.use(
       secure: config.nodeEnv === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
-  })
+  }),
 );
 
 // Passport initialization
@@ -73,6 +76,11 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/pages", pageRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/admin/promo-codes", promoCodeRoutes);
+app.use("/api/promo-codes", promoCodeRoutes);
+app.use("/api/shipping-config", shippingConfigRoutes);
+app.use("/api/admin/shipping-config", shippingConfigRoutes);
 
 // Root route
 app.get("/", (req, res) => {

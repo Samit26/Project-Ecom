@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
       city: { type: String, default: "" },
       state: { type: String, default: "" },
       zipCode: { type: String, default: "" },
+      pincode: { type: String, default: "" },
       country: { type: String, default: "India" },
     },
     phoneNumber: {
@@ -42,7 +43,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const User = mongoose.model("User", userSchema);

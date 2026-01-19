@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import { cartService } from "../services/apiService";
 import { useUser } from "./UserContext";
 
@@ -55,21 +56,23 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = async (product) => {
     if (!isLoggedIn) {
-      alert("Please login to add items to cart");
+      toast.warning("Please login to add items to cart");
       return;
     }
 
     try {
       const response = await cartService.addToCart(
         product._id || product.id,
-        1
+        1,
       );
       if (response.success) {
         await loadCart();
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert(error.response?.data?.message || "Failed to add item to cart");
+      toast.error(
+        error.response?.data?.message || "Failed to add item to cart",
+      );
     }
   };
 
@@ -97,7 +100,7 @@ export const CartProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error updating quantity:", error);
-      alert(error.response?.data?.message || "Failed to update quantity");
+      toast.error(error.response?.data?.message || "Failed to update quantity");
     }
   };
 
@@ -126,7 +129,7 @@ export const CartProvider = ({ children }) => {
 
   const cartTotal = cart.reduce(
     (total, item) => total + item.price * item.quantity,
-    0
+    0,
   );
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 

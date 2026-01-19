@@ -30,14 +30,9 @@ export const productSchema = Joi.object({
     originalPrice: Joi.number().min(0).required(),
     offerPrice: Joi.number().min(0).required(),
   }).required(),
-  stock: Joi.object({
-    isAvailable: Joi.boolean(),
-    quantity: Joi.number().min(0),
-  }),
+  stock: Joi.string().valid("available", "not available").required(),
   rating: Joi.number().min(0).max(5),
-  category: Joi.string()
-    .valid("LED Lights", "Smart Lighting", "Decorative", "Outdoor")
-    .required(),
+  category: Joi.string().required(),
   isFeatured: Joi.boolean(),
 });
 
@@ -45,13 +40,20 @@ export const productSchema = Joi.object({
 export const updateProfileSchema = Joi.object({
   name: Joi.string().trim(),
   phoneNumber: Joi.string().trim(),
-  address: Joi.object({
-    street: Joi.string(),
-    city: Joi.string(),
-    state: Joi.string(),
-    zipCode: Joi.string(),
-    country: Joi.string(),
-  }),
+  address: Joi.alternatives().try(
+    Joi.object({
+      street: Joi.string(),
+      city: Joi.string(),
+      state: Joi.string(),
+      zipCode: Joi.string(),
+      pincode: Joi.string(),
+      country: Joi.string(),
+    }),
+    Joi.string(),
+  ),
+  city: Joi.string().trim(),
+  state: Joi.string().trim(),
+  pincode: Joi.string().trim(),
 });
 
 // Order creation schema
@@ -59,10 +61,13 @@ export const orderSchema = Joi.object({
   shippingAddress: Joi.object({
     name: Joi.string().required(),
     phoneNumber: Joi.string().required(),
-    street: Joi.string().required(),
-    city: Joi.string().required(),
-    state: Joi.string().required(),
-    zipCode: Joi.string().required(),
-    country: Joi.string().required(),
+    address: Joi.string().allow(""),
+    street: Joi.string().allow(""),
+    city: Joi.string().allow(""),
+    state: Joi.string().allow(""),
+    pincode: Joi.string().allow(""),
+    zipCode: Joi.string().allow(""),
+    country: Joi.string().allow(""),
   }).required(),
+  promoCode: Joi.string().allow(""),
 });
