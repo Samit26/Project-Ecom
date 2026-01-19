@@ -83,6 +83,35 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
+// @desc    Get order by order number (Admin)
+// @route   GET /api/admin/orders/:orderNumber
+// @access  Private/Admin
+export const getOrderByNumber = async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderNumber: req.params.orderNumber })
+      .populate("userId", "name email")
+      .populate("items.productId", "name images");
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching order",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Update order status (Admin)
 // @route   PUT /api/admin/orders/:id/status
 // @access  Private/Admin

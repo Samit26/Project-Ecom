@@ -160,6 +160,11 @@ export const adminService = {
     return response.data;
   },
 
+  getOrderByNumber: async (orderNumber) => {
+    const response = await api.get(`/admin/orders/${orderNumber}`);
+    return response.data;
+  },
+
   updateOrderStatus: async (id, orderStatus, deliveryLink) => {
     const response = await api.put(`/admin/orders/${id}/status`, {
       orderStatus,

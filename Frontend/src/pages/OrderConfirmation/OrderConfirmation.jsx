@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { orderService } from "../../services/apiService";
+import { orderService, adminService } from "../../services/apiService";
+import { useUser } from "../../context/UserContext";
 import "./OrderConfirmation.css";
 
 const OrderConfirmation = () => {
   const { orderNumber } = useParams();
   const navigate = useNavigate();
+  const { isAdmin } = useUser();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(true);
@@ -20,7 +22,7 @@ const OrderConfirmation = () => {
     try {
       setVerifying(true);
 
-      // Find order by order number
+      // Find order by order number from user's orders
       const ordersResponse = await orderService.getUserOrders();
       if (ordersResponse.success) {
         const foundOrder = ordersResponse.data.find(
@@ -61,10 +63,33 @@ const OrderConfirmation = () => {
             // Payment already completed, just use the found order
             setOrder(foundOrder);
           }
+        } else if (isAdmin) {
+          // If admin and order not found in user's orders, try admin endpoint
+          try {
+            const adminOrderResponse =
+              await adminService.getOrderByNumber(orderNumber);
+            if (adminOrderResponse.success) {
+              setOrder(adminOrderResponse.data);
+            }
+          } catch (error) {
+            console.error("Admin order fetch error:", error);
+          }
         }
       }
     } catch (error) {
       console.error("Error loading order:", error);
+      // If regular order fetch fails and user is admin, try admin endpoint
+      if (isAdmin) {
+        try {
+          const adminOrderResponse =
+            await adminService.getOrderByNumber(orderNumber);
+          if (adminOrderResponse.success) {
+            setOrder(adminOrderResponse.data);
+          }
+        } catch (adminError) {
+          console.error("Admin order fetch error:", adminError);
+        }
+      }
     } finally {
       setVerifying(false);
       setLoading(false);

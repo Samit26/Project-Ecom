@@ -7,6 +7,7 @@ import {
 } from "../controllers/productController.js";
 import {
   getAllOrders,
+  getOrderByNumber,
   updateOrderStatus,
   getDashboardStats,
 } from "../controllers/adminController.js";
@@ -25,7 +26,7 @@ router.post(
   "/products",
   upload.array("images", 9),
   validate(productSchema),
-  createProduct
+  createProduct,
 );
 router.put("/products/:id", upload.array("images", 9), updateProduct);
 router.delete("/products/:id", deleteProduct);
@@ -33,6 +34,7 @@ router.patch("/products/:id/featured", toggleFeatured);
 
 // Order Management
 router.get("/orders", getAllOrders);
+router.get("/orders/:orderNumber", getOrderByNumber);
 router.put("/orders/:id/status", updateOrderStatus);
 
 // Dashboard Stats
