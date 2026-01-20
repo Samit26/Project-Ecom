@@ -1,29 +1,50 @@
-import nodemailer from "nodemailer";
+import Mailgun from "mailgun.js";
+import formData from "form-data";
 
-// Create transporter for sending emails
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_APP_PASSWORD,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
+// Initialize Mailgun client
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY || "",
+});
+
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || "";
+const FROM_EMAIL =
+  process.env.EMAIL_FROM || `Ajeet Lights <noreply@${MAILGUN_DOMAIN}>`;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "ajeetlights@gmail.com";
+
+// Helper function to send email via Mailgun
+const sendEmail = async (options) => {
+  try {
+    const messageData = {
+      from: options.from || FROM_EMAIL,
+      to: Array.isArray(options.to) ? options.to : [options.to],
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    };
+
+    if (options.replyTo) {
+      messageData["h:Reply-To"] = options.replyTo;
+    }
+
+    const response = await mg.messages.create(MAILGUN_DOMAIN, messageData);
+    console.log("Email sent successfully:", response.id);
+    return {
+      success: true,
+      messageId: response.id,
+    };
+  } catch (error) {
+    console.error("Mailgun error:", error);
+    throw error;
+  }
 };
 
 // Send email notification to admin when contact form is submitted
 export const sendContactFormNotification = async (formData) => {
   try {
-    const transporter = createTransporter();
-
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.ADMIN_EMAIL || "ajeetlights@gmail.com",
+      to: ADMIN_EMAIL,
       subject: `New Contact Form Submission: ${formData.subject}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -75,12 +96,9 @@ Please reply to the customer at: ${formData.email}
       replyTo: formData.email,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Contact form email sent:", info.messageId);
-    return {
-      success: true,
-      messageId: info.messageId,
-    };
+    const result = await sendEmail(mailOptions);
+    console.log("Contact form email sent:", result.messageId);
+    return result;
   } catch (error) {
     console.error("Error sending contact form email:", error);
     return {
@@ -93,10 +111,7 @@ Please reply to the customer at: ${formData.email}
 // Send auto-reply to customer
 export const sendContactFormAutoReply = async (formData) => {
   try {
-    const transporter = createTransporter();
-
     const mailOptions = {
-      from: process.env.EMAIL_USER,
       to: formData.email,
       subject: "Thank you for contacting Ajeet Lights",
       html: `
@@ -166,12 +181,9 @@ This is an automated message, please do not reply directly to this email.
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Auto-reply email sent:", info.messageId);
-    return {
-      success: true,
-      messageId: info.messageId,
-    };
+    const result = await sendEmail(mailOptions);
+    console.log("Auto-reply email sent:", result.messageId);
+    return result;
   } catch (error) {
     console.error("Error sending auto-reply email:", error);
     return {
@@ -184,8 +196,6 @@ This is an automated message, please do not reply directly to this email.
 // Send order confirmation email to admin
 export const sendOrderNotificationToAdmin = async (orderData) => {
   try {
-    const transporter = createTransporter();
-
     const itemsList = orderData.items
       .map(
         (item) =>
@@ -206,8 +216,7 @@ export const sendOrderNotificationToAdmin = async (orderData) => {
       .join("\n");
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.ADMIN_EMAIL || "ajeetlights@gmail.com",
+      to: ADMIN_EMAIL,
       subject: `New Order Placed - #${orderData.orderNumber}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
@@ -335,12 +344,9 @@ Login to admin panel to manage this order
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Order notification email sent to admin:", info.messageId);
-    return {
-      success: true,
-      messageId: info.messageId,
-    };
+    const result = await sendEmail(mailOptions);
+    console.log("Order notification email sent to admin:", result.messageId);
+    return result;
   } catch (error) {
     console.error("Error sending order notification to admin:", error);
     return {
@@ -353,8 +359,6 @@ Login to admin panel to manage this order
 // Send order confirmation email to customer
 export const sendOrderConfirmationToCustomer = async (orderData) => {
   try {
-    const transporter = createTransporter();
-
     const itemsList = orderData.items
       .map(
         (item) =>
@@ -375,7 +379,6 @@ export const sendOrderConfirmationToCustomer = async (orderData) => {
       .join("\n");
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
       to: orderData.customerEmail,
       subject: `Order Confirmation - #${orderData.orderNumber} - Ajeet Lights`,
       html: `
@@ -537,12 +540,9 @@ You're receiving this email because you placed an order on our website.
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Order confirmation email sent to customer:", info.messageId);
-    return {
-      success: true,
-      messageId: info.messageId,
-    };
+    const result = await sendEmail(mailOptions);
+    console.log("Order confirmation email sent to customer:", result.messageId);
+    return result;
   } catch (error) {
     console.error("Error sending order confirmation to customer:", error);
     return {

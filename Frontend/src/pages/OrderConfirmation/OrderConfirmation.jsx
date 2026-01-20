@@ -7,20 +7,39 @@ import "./OrderConfirmation.css";
 const OrderConfirmation = () => {
   const { orderNumber } = useParams();
   const navigate = useNavigate();
-  const { isAdmin } = useUser();
+  const { isAdmin, loading: userLoading } = useUser();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
-    if (orderNumber) {
+    // Wait for user context to finish loading before fetching order
+    if (orderNumber && !userLoading) {
       verifyAndLoadOrder();
     }
-  }, [orderNumber]);
+  }, [orderNumber, userLoading, isAdmin]);
 
   const verifyAndLoadOrder = async () => {
     try {
       setVerifying(true);
+      setLoading(true);
+
+      // If admin, try admin endpoint first
+      if (isAdmin) {
+        try {
+          const adminOrderResponse =
+            await adminService.getOrderByNumber(orderNumber);
+          if (adminOrderResponse.success) {
+            setOrder(adminOrderResponse.data);
+            setVerifying(false);
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error("Admin order fetch error:", error);
+          // Fall through to try user orders
+        }
+      }
 
       // Find order by order number from user's orders
       const ordersResponse = await orderService.getUserOrders();
@@ -63,40 +82,17 @@ const OrderConfirmation = () => {
             // Payment already completed, just use the found order
             setOrder(foundOrder);
           }
-        } else if (isAdmin) {
-          // If admin and order not found in user's orders, try admin endpoint
-          try {
-            const adminOrderResponse =
-              await adminService.getOrderByNumber(orderNumber);
-            if (adminOrderResponse.success) {
-              setOrder(adminOrderResponse.data);
-            }
-          } catch (error) {
-            console.error("Admin order fetch error:", error);
-          }
         }
       }
     } catch (error) {
       console.error("Error loading order:", error);
-      // If regular order fetch fails and user is admin, try admin endpoint
-      if (isAdmin) {
-        try {
-          const adminOrderResponse =
-            await adminService.getOrderByNumber(orderNumber);
-          if (adminOrderResponse.success) {
-            setOrder(adminOrderResponse.data);
-          }
-        } catch (adminError) {
-          console.error("Admin order fetch error:", adminError);
-        }
-      }
     } finally {
       setVerifying(false);
       setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="page">
         <div className="order-confirmation">

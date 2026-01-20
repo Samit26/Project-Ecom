@@ -25,6 +25,10 @@ import shippingConfigRoutes from "./routes/shippingConfigRoutes.js";
 // Initialize Express
 const app = express();
 
+// Trust proxy - Required for Render, Heroku, and other reverse proxies
+// This allows Express to correctly identify client IP from X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Connect to Database
 connectDB();
 

@@ -4,7 +4,6 @@ import {
   sendContactFormNotification,
   sendContactFormAutoReply,
 } from "../utils/emailHelper.js";
-import nodemailer from "nodemailer";
 
 // @desc    Get page content by type
 // @route   GET /api/pages/:pageType
