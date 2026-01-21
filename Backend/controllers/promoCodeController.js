@@ -6,12 +6,20 @@ import PromoCode from "../models/PromoCode.js";
 export const getHomePagePromoCode = async (req, res) => {
   try {
     const now = new Date();
+
+    // Set time to start of day for validFrom and end of day for validUntil comparison
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+
     const promoCode = await PromoCode.findOne({
       showOnHomePage: true,
       isActive: true,
-      validFrom: { $lte: now },
-      validUntil: { $gte: now },
-    });
+      validFrom: { $lte: endOfToday },
+      validUntil: { $gte: startOfToday },
+    }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
