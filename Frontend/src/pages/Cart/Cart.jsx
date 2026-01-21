@@ -70,14 +70,31 @@ const Cart = () => {
       const userAddress = {
         name: currentUser.name || currentUser.displayName || "",
         phoneNumber: currentUser.phoneNumber || currentUser.phone || "",
-        address: currentUser.address?.street || currentUser.address || "",
-        city: currentUser.address?.city || currentUser.city || "",
-        state: currentUser.address?.state || currentUser.state || "",
+        address:
+          typeof currentUser.address === "object"
+            ? currentUser.address?.street || ""
+            : currentUser.address || "",
+        city:
+          typeof currentUser.address?.city === "string"
+            ? currentUser.address.city
+            : currentUser.city || "",
+        state:
+          typeof currentUser.address?.state === "string"
+            ? currentUser.address.state
+            : currentUser.state || "",
         pincode:
-          currentUser.address?.pincode ||
-          currentUser.address?.zipCode ||
-          currentUser.pincode ||
-          "",
+          (typeof currentUser.address?.pincode === "string" ||
+          typeof currentUser.address?.pincode === "number"
+            ? String(currentUser.address.pincode)
+            : "") ||
+          (typeof currentUser.address?.zipCode === "string" ||
+          typeof currentUser.address?.zipCode === "number"
+            ? String(currentUser.address.zipCode)
+            : "") ||
+          (typeof currentUser.pincode === "string" ||
+          typeof currentUser.pincode === "number"
+            ? String(currentUser.pincode)
+            : ""),
       };
 
       // Only set if at least name or address is present
