@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "https://project-ecom-ww82.onrender.com";
+  import.meta.env.VITE_API_URL || "https://project-ecom-qqrm.onrender.com";
 
 // Create axios instance
 const api = axios.create({

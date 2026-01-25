@@ -5,13 +5,17 @@ import {
   getOrderById,
   processPayment,
   verifyPaymentStatus,
+  handlePaymentWebhook,
 } from "../controllers/orderController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { validate, orderSchema } from "../middlewares/validation.js";
 
 const router = express.Router();
 
-// All order routes require authentication
+// Webhook route - must be BEFORE authenticate middleware (public endpoint)
+router.post("/webhook", handlePaymentWebhook);
+
+// All other order routes require authentication
 router.use(authenticate);
 
 router.post("/", validate(orderSchema), createOrder);

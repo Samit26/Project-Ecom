@@ -22,7 +22,7 @@ export const createPaymentOrder = async (orderId, amount, customerDetails) => {
       },
       order_meta: {
         return_url: `${config.clientUrl}/order-confirmation/${orderId}`,
-        notify_url: `${config.clientUrl}/api/orders/${orderId}/webhook`,
+        notify_url: `${config.serverUrl}/api/orders/webhook`,
       },
     };
 
@@ -42,7 +42,7 @@ export const createPaymentOrder = async (orderId, amount, customerDetails) => {
   } catch (error) {
     console.error(
       "Cashfree create order error:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     return {
       success: false,
@@ -63,7 +63,7 @@ export const verifyPayment = async (orderId) => {
           "x-client-id": config.cashfree.appId,
           "x-client-secret": config.cashfree.secretKey,
         },
-      }
+      },
     );
 
     return {
@@ -73,7 +73,7 @@ export const verifyPayment = async (orderId) => {
   } catch (error) {
     console.error(
       "Cashfree verify payment error:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     return {
       success: false,

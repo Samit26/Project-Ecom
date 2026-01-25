@@ -391,3 +391,116 @@ export const verifyPaymentStatus = async (req, res) => {
     });
   }
 };
+
+// @desc    Handle Cashfree payment webhook
+// @route   POST /api/orders/webhook
+// @access  Public (No auth - called by Cashfree)
+export const handlePaymentWebhook = async (req, res) => {
+  try {
+    console.log("Webhook received:", JSON.stringify(req.body, null, 2));
+
+    const webhookData = req.body;
+    const { type, data } = webhookData;
+
+    // Handle payment success webhook
+    if (type === "PAYMENT_SUCCESS_WEBHOOK") {
+      const { order_id, payment } = data?.order || data;
+      const orderId = order_id;
+
+      if (!orderId) {
+        console.error("No order_id in webhook data");
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing order_id" });
+      }
+
+      // Find order by orderNumber
+      const order = await Order.findOne({ orderNumber: orderId });
+
+      if (!order) {
+        console.error(`Order not found: ${orderId}`);
+        return res
+          .status(404)
+          .json({ success: false, message: "Order not found" });
+      }
+
+      // Only update if payment is not already completed
+      if (order.paymentStatus !== "completed") {
+        order.paymentStatus = "completed";
+        order.paymentId =
+          payment?.cf_payment_id || data?.payment?.cf_payment_id;
+
+        // Only set to processing if order is currently pending
+        if (order.orderStatus === "pending") {
+          order.orderStatus = "processing";
+        }
+
+        await order.save();
+
+        // Clear user's cart
+        await Cart.findOneAndUpdate(
+          { userId: order.userId },
+          { items: [], totalAmount: 0 },
+        );
+
+        // Get user details for email
+        const user = await User.findById(order.userId);
+
+        if (user) {
+          // Prepare email data
+          const emailData = {
+            orderNumber: order.orderNumber,
+            createdAt: order.createdAt,
+            paymentStatus: order.paymentStatus,
+            orderStatus: order.orderStatus,
+            items: order.items,
+            subtotal: order.subtotal,
+            shippingFee: order.shippingFee,
+            promoCodeDiscount: order.promoCodeDiscount || 0,
+            totalAmount: order.totalAmount,
+            shippingAddress: order.shippingAddress,
+            customerEmail: user.email,
+          };
+
+          // Send emails (don't wait for them)
+          sendOrderNotificationToAdmin(emailData).catch((error) =>
+            console.error("Failed to send admin notification:", error),
+          );
+          sendOrderConfirmationToCustomer(emailData).catch((error) =>
+            console.error("Failed to send customer confirmation:", error),
+          );
+        }
+
+        console.log(`Payment completed for order ${orderId}`);
+      }
+
+      // Always respond with success to Cashfree
+      return res.status(200).json({ success: true });
+    }
+
+    // Handle payment failure webhook
+    if (type === "PAYMENT_FAILED_WEBHOOK") {
+      const { order_id } = data?.order || data;
+      const orderId = order_id;
+
+      if (orderId) {
+        const order = await Order.findOne({ orderNumber: orderId });
+        if (order && order.paymentStatus !== "completed") {
+          order.paymentStatus = "failed";
+          await order.save();
+          console.log(`Payment failed for order ${orderId}`);
+        }
+      }
+
+      return res.status(200).json({ success: true });
+    }
+
+    // For other webhook types, just acknowledge
+    console.log(`Received webhook type: ${type}`);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Webhook processing error:", error);
+    // Always return 200 to Cashfree to avoid retries
+    return res.status(200).json({ success: true });
+  }
+};
