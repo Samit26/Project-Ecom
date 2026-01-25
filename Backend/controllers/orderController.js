@@ -328,9 +328,6 @@ export const verifyPaymentStatus = async (req, res) => {
     );
 
     if (successfulPayment) {
-      // Check if payment was already completed (to avoid duplicate processing)
-      const wasAlreadyCompleted = order.paymentStatus === "completed";
-
       order.paymentStatus = "completed";
       order.paymentId = successfulPayment.cf_payment_id;
       // Only set to processing if order is currently pending
@@ -346,35 +343,8 @@ export const verifyPaymentStatus = async (req, res) => {
         { items: [], totalAmount: 0 },
       );
 
-      // Only send emails if payment wasn't already completed
-      // This prevents duplicate emails (webhook already sends them)
-      if (!wasAlreadyCompleted) {
-        // Get user details for email
-        const user = await User.findById(req.user.id);
-
-        // Prepare email data
-        const emailData = {
-          orderNumber: order.orderNumber,
-          createdAt: order.createdAt,
-          paymentStatus: order.paymentStatus,
-          orderStatus: order.orderStatus,
-          items: order.items,
-          subtotal: order.subtotal,
-          shippingFee: order.shippingFee,
-          promoCodeDiscount: order.promoCodeDiscount || 0,
-          totalAmount: order.totalAmount,
-          shippingAddress: order.shippingAddress,
-          customerEmail: user.email,
-        };
-
-        // Send emails (don't wait for them, send async)
-        sendOrderNotificationToAdmin(emailData).catch((error) =>
-          console.error("Failed to send admin notification:", error),
-        );
-        sendOrderConfirmationToCustomer(emailData).catch((error) =>
-          console.error("Failed to send customer confirmation:", error),
-        );
-      }
+      // NOTE: Emails are sent by the webhook handler, not here
+      // This prevents duplicate emails since webhook is the authoritative source
 
       res.json({
         success: true,
