@@ -348,9 +348,6 @@ const ProductDetail = () => {
               {expandedSection === "shipping" && (
                 <div className="section-content">
                   <p>
-                    <strong>Free Shipping:</strong> On orders above ₹500
-                  </p>
-                  <p>
                     <strong>Delivery Time:</strong> 5-7 business days
                   </p>
                   <p>

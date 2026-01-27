@@ -10,7 +10,7 @@ const Footer = () => {
             <h3>AJEET LIGHTS</h3>
             <p>
               We Light Up Your Homes with premium quality, energy-efficient
-              lighting solutions since 2010.
+              lighting solutions since 2025.
             </p>
             <div className="social-links">
               <a href="https://www.facebook.com/share/1GQE7wKiiR/">
