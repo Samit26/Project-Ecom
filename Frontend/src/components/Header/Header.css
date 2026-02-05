@@ -36,7 +36,7 @@ header {
 }
 
 .main-header {
-  padding: 20px 0;
+  padding: 12px 0;
 }
 
 .main-header .container {
@@ -49,8 +49,15 @@ header {
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   text-decoration: none;
+}
+
+.logo img {
+  width: 65px;
+  height: 65px;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 .logo i {
@@ -59,9 +66,10 @@ header {
 }
 
 .logo h1 {
-  font-size: 1.8rem;
+  font-size: 2.1rem;
   color: var(--secondary-blue);
-  line-height: 1.2;
+  line-height: 1;
+  margin: 0;
 }
 
 .logo span {
@@ -69,10 +77,11 @@ header {
 }
 
 .logo .slogan {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--dark-gray);
   font-weight: 400;
   font-style: italic;
+  margin-top: 2px;
 }
 
 nav ul {

@@ -145,7 +145,8 @@ const Header = () => {
       <div className="main-header">
         <div className="container">
           <Link to="/" className="logo">
-            <i className="fas fa-lightbulb"></i>
+            {/* <i className="fas fa-lightbulb"></i> */}
+            <img src="/favicon.png"></img>
             <div>
               <h1>
                 AJEET <span>LIGHTS</span>
