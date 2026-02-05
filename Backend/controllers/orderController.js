@@ -391,7 +391,7 @@ export const handlePaymentWebhook = async (req, res) => {
           .json({ success: false, message: "Missing order_id" });
       }
 
-      // Find order by orderNumber
+      // Find order by orderNumber and lock it to prevent race conditions
       const order = await Order.findOne({ orderNumber: orderId });
 
       if (!order) {
@@ -401,55 +401,77 @@ export const handlePaymentWebhook = async (req, res) => {
           .json({ success: false, message: "Order not found" });
       }
 
-      // Only update if payment is not already completed
-      if (order.paymentStatus !== "completed") {
-        order.paymentStatus = "completed";
-        order.paymentId =
-          payment?.cf_payment_id || data?.payment?.cf_payment_id;
-
-        // Only set to processing if order is currently pending
-        if (order.orderStatus === "pending") {
-          order.orderStatus = "processing";
-        }
-
-        await order.save();
-
-        // Clear user's cart
-        await Cart.findOneAndUpdate(
-          { userId: order.userId },
-          { items: [], totalAmount: 0 },
+      // Check if payment is already completed (webhook deduplication)
+      if (order.paymentStatus === "completed") {
+        console.log(
+          `Payment already processed for order ${orderId}, ignoring duplicate webhook`,
         );
-
-        // Get user details for email
-        const user = await User.findById(order.userId);
-
-        if (user) {
-          // Prepare email data
-          const emailData = {
-            orderNumber: order.orderNumber,
-            createdAt: order.createdAt,
-            paymentStatus: order.paymentStatus,
-            orderStatus: order.orderStatus,
-            items: order.items,
-            subtotal: order.subtotal,
-            shippingFee: order.shippingFee,
-            promoCodeDiscount: order.promoCodeDiscount || 0,
-            totalAmount: order.totalAmount,
-            shippingAddress: order.shippingAddress,
-            customerEmail: user.email,
-          };
-
-          // Send emails (don't wait for them)
-          sendOrderNotificationToAdmin(emailData).catch((error) =>
-            console.error("Failed to send admin notification:", error),
-          );
-          sendOrderConfirmationToCustomer(emailData).catch((error) =>
-            console.error("Failed to send customer confirmation:", error),
-          );
-        }
-
-        console.log(`Payment completed for order ${orderId}`);
+        return res
+          .status(200)
+          .json({ success: true, message: "Already processed" });
       }
+
+      // Use findOneAndUpdate with a condition to ensure atomic update (prevents race conditions)
+      const updatedOrder = await Order.findOneAndUpdate(
+        {
+          orderNumber: orderId,
+          paymentStatus: { $ne: "completed" }, // Only update if not already completed
+        },
+        {
+          $set: {
+            paymentStatus: "completed",
+            paymentId: payment?.cf_payment_id || data?.payment?.cf_payment_id,
+            orderStatus: "processing",
+          },
+        },
+        { new: true },
+      );
+
+      // If updatedOrder is null, it means another webhook already processed this
+      if (!updatedOrder) {
+        console.log(
+          `Payment already processed by concurrent webhook for order ${orderId}`,
+        );
+        return res
+          .status(200)
+          .json({ success: true, message: "Already processed" });
+      }
+
+      // Clear user's cart (now using updatedOrder)
+      await Cart.findOneAndUpdate(
+        { userId: updatedOrder.userId },
+        { items: [], totalAmount: 0 },
+      );
+
+      // Get user details for email
+      const user = await User.findById(updatedOrder.userId);
+
+      if (user) {
+        // Prepare email data
+        const emailData = {
+          orderNumber: updatedOrder.orderNumber,
+          createdAt: updatedOrder.createdAt,
+          paymentStatus: updatedOrder.paymentStatus,
+          orderStatus: updatedOrder.orderStatus,
+          items: updatedOrder.items,
+          subtotal: updatedOrder.subtotal,
+          shippingFee: updatedOrder.shippingFee,
+          promoCodeDiscount: updatedOrder.promoCodeDiscount || 0,
+          totalAmount: updatedOrder.totalAmount,
+          shippingAddress: updatedOrder.shippingAddress,
+          customerEmail: user.email,
+        };
+
+        // Send emails (don't wait for them)
+        sendOrderNotificationToAdmin(emailData).catch((error) =>
+          console.error("Failed to send admin notification:", error),
+        );
+        sendOrderConfirmationToCustomer(emailData).catch((error) =>
+          console.error("Failed to send customer confirmation:", error),
+        );
+      }
+
+      console.log(`Payment completed for order ${orderId}`);
 
       // Always respond with success to Cashfree
       return res.status(200).json({ success: true });
