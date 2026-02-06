@@ -56,9 +56,8 @@ const ProductCard = ({ product, badgeText }) => {
             <span className="rating-number">{product.rating || 4.8}</span>
             {generateStarRating(product.rating || 0)}
             <span className="rating-value">
-              ({product.rating || 4.8}){" "}
-              {product.reviewCount || Math.floor(Math.random() * 900) + 100}{" "}
-              Reviews
+              ({product.reviewCount || Math.floor(Math.random() * 900) + 100}{" "}
+              Reviews)
             </span>
           </div>
           <div className="price">
