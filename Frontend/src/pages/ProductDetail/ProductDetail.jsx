@@ -206,7 +206,8 @@ const ProductDetail = () => {
           <div className="product-rating-review">
             <div className="stars">{generateStarRating(product.rating)}</div>
             <span className="review-count">
-              ({product.reviewCount || 124} Reviews)
+              ({product.reviewCount || Math.floor(Math.random() * 900) + 100}{" "}
+              Reviews)
             </span>
           </div>
 
