@@ -220,6 +220,14 @@ const Cart = () => {
         );
       }
 
+      // Debug: Log payment response
+      console.log("Payment Response:", paymentResponse);
+      console.log("Payment Session ID:", paymentResponse.data.paymentSessionId);
+
+      if (!paymentResponse.data.paymentSessionId) {
+        throw new Error("Payment session ID not received from server");
+      }
+
       // Step 3: Load Cashfree and redirect
       await loadCashfreeSDK();
 
