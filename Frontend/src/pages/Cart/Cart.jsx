@@ -232,7 +232,7 @@ const Cart = () => {
       await loadCashfreeSDK();
 
       const cashfree = window.Cashfree({
-        mode: "sandbox", // Change to "production" for live
+        mode: import.meta.env.VITE_CASHFREE_MODE || "production",
       });
 
       const checkoutOptions = {
