@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import Order from "../models/Order.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
@@ -9,6 +10,7 @@ import {
   sendOrderNotificationToAdmin,
   sendOrderConfirmationToCustomer,
 } from "../utils/emailHelper.js";
+import config from "../config/config.js";
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -374,6 +376,34 @@ export const verifyPaymentStatus = async (req, res) => {
 // @access  Public (No auth - called by Cashfree)
 export const handlePaymentWebhook = async (req, res) => {
   try {
+    // CRITICAL SECURITY: Verify webhook signature from Cashfree
+    const signature = req.headers["x-webhook-signature"];
+    const timestamp = req.headers["x-webhook-timestamp"];
+
+    if (!signature || !timestamp) {
+      console.error("Missing webhook signature or timestamp");
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - missing signature",
+      });
+    }
+
+    // Generate signature to compare
+    const signatureData = timestamp + JSON.stringify(req.body);
+    const generatedSignature = crypto
+      .createHmac("sha256", config.cashfree.secretKey)
+      .update(signatureData)
+      .digest("base64");
+
+    // Verify signature matches
+    if (signature !== generatedSignature) {
+      console.error("Invalid webhook signature - possible attack attempt");
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - invalid signature",
+      });
+    }
+
     console.log("Webhook received:", JSON.stringify(req.body, null, 2));
 
     const webhookData = req.body;
