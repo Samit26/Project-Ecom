@@ -129,7 +129,9 @@ export const createOrder = async (req, res) => {
       shippingConfig &&
       amountAfterDiscount >= shippingConfig.freeShippingThreshold
         ? 0
-        : shippingConfig?.baseShippingFee || 50;
+        : shippingConfig
+          ? shippingConfig.baseShippingFee
+          : 50;
 
     // Calculate total
     const totalAmount = amountAfterDiscount + shippingFee;
