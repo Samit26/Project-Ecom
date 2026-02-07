@@ -263,6 +263,13 @@ export const processPayment = async (req, res) => {
     }
 
     // Create Cashfree payment order
+    console.log("Creating Cashfree order with:", {
+      orderNumber: order.orderNumber,
+      totalAmount: order.totalAmount,
+      phone: order.shippingAddress.phoneNumber,
+      email: req.user.email,
+    });
+
     const paymentResult = await createPaymentOrder(
       order.orderNumber,
       order.totalAmount,
@@ -274,11 +281,27 @@ export const processPayment = async (req, res) => {
       },
     );
 
+    console.log(
+      "Cashfree API response:",
+      JSON.stringify(paymentResult, null, 2),
+    );
+
     if (!paymentResult.success) {
       return res.status(500).json({
         success: false,
         message: "Error creating payment",
         error: paymentResult.error,
+      });
+    }
+
+    if (!paymentResult.data.payment_session_id) {
+      console.error(
+        "No payment_session_id in Cashfree response:",
+        paymentResult.data,
+      );
+      return res.status(500).json({
+        success: false,
+        message: "Failed to get payment session from Cashfree",
       });
     }
 
