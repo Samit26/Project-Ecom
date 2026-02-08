@@ -370,8 +370,51 @@ export const verifyPaymentStatus = async (req, res) => {
         { items: [], totalAmount: 0 },
       );
 
-      // NOTE: Emails are sent by the webhook handler, not here
-      // This prevents duplicate emails since webhook is the authoritative source
+      // Send emails as fallback if webhook didn't already handle it
+      // Check if order was just updated (webhook may have already sent emails)
+      // We use a simple flag check - if emailSent is not set, send emails here
+      if (!order.emailSent) {
+        try {
+          const user = await User.findById(req.user.id);
+          if (user) {
+            const emailData = {
+              orderNumber: order.orderNumber,
+              createdAt: order.createdAt,
+              paymentStatus: order.paymentStatus,
+              orderStatus: order.orderStatus,
+              items: order.items,
+              subtotal: order.subtotal,
+              shippingFee: order.shippingFee,
+              promoCodeDiscount: order.promoCodeDiscount || 0,
+              totalAmount: order.totalAmount,
+              shippingAddress: order.shippingAddress,
+              customerEmail: user.email,
+            };
+
+            // Mark email as sent to prevent duplicates
+            order.emailSent = true;
+            await order.save();
+
+            sendOrderNotificationToAdmin(emailData).catch((error) =>
+              console.error(
+                "Failed to send admin notification (fallback):",
+                error,
+              ),
+            );
+            sendOrderConfirmationToCustomer(emailData).catch((error) =>
+              console.error(
+                "Failed to send customer confirmation (fallback):",
+                error,
+              ),
+            );
+            console.log(
+              `Fallback emails triggered for order ${order.orderNumber}`,
+            );
+          }
+        } catch (emailError) {
+          console.error("Fallback email sending failed:", emailError);
+        }
+      }
 
       res.json({
         success: true,
@@ -413,8 +456,10 @@ export const handlePaymentWebhook = async (req, res) => {
       });
     }
 
-    // Generate signature to compare
-    const signatureData = timestamp + JSON.stringify(req.body);
+    // Generate signature to compare using the raw body (not JSON.stringify which may reorder/reformat)
+    // req.rawBody is set by express.json's verify callback in server.js
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const signatureData = timestamp + rawBody;
     const generatedSignature = crypto
       .createHmac("sha256", config.cashfree.secretKey)
       .update(signatureData)
@@ -423,6 +468,10 @@ export const handlePaymentWebhook = async (req, res) => {
     // Verify signature matches
     if (signature !== generatedSignature) {
       console.error("Invalid webhook signature - possible attack attempt");
+      console.error("Expected signature:", generatedSignature);
+      console.error("Received signature:", signature);
+      console.error("Raw body used:", rawBody.substring(0, 200));
+      console.error("Timestamp used:", timestamp);
       return res.status(401).json({
         success: false,
         message: "Unauthorized - invalid signature",
@@ -477,6 +526,7 @@ export const handlePaymentWebhook = async (req, res) => {
             paymentStatus: "completed",
             paymentId: payment?.cf_payment_id || data?.payment?.cf_payment_id,
             orderStatus: "processing",
+            emailSent: true, // Mark that webhook is handling emails
           },
         },
         { new: true },

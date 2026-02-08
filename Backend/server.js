@@ -27,7 +27,7 @@ const app = express();
 
 // Trust proxy - Required for Render, Heroku, and other reverse proxies
 // This allows Express to correctly identify client IP from X-Forwarded-For header
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Connect to Database
 connectDB();
@@ -35,7 +35,17 @@ connectDB();
 // Middlewares
 app.use(helmet()); // Security headers
 app.use(morgan("dev")); // Logging
-app.use(express.json()); // Body parser
+// Body parser - preserve raw body for webhook signature verification
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      // Store raw body buffer for routes that need signature verification (e.g., Cashfree webhooks)
+      if (req.originalUrl === "/api/orders/webhook") {
+        req.rawBody = buf.toString("utf8");
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Cookie parser
 
