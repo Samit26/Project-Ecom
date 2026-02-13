@@ -19,14 +19,86 @@ export const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const { isLoggedIn } = useUser();
 
-  // Load cart when user is logged in
+  // Load cart from localStorage or backend
   useEffect(() => {
     if (isLoggedIn) {
-      loadCart();
+      syncAndLoadCart();
     } else {
-      setCart([]);
+      loadLocalCart();
     }
   }, [isLoggedIn]);
+
+  // Save cart to localStorage when it changes (for guest users)
+  useEffect(() => {
+    if (!isLoggedIn && cart.length >= 0) {
+      localStorage.setItem('guestCart', JSON.stringify(cart));
+    }
+  }, [cart, isLoggedIn]);
+
+  const loadLocalCart = () => {
+    try {
+      const savedCart = localStorage.getItem('guestCart');
+      if (savedCart) {
+        setCart(JSON.parse(savedCart));
+      } else {
+        setCart([]);
+      }
+    } catch (error) {
+      console.error("Error loading local cart:", error);
+      setCart([]);
+    }
+  };
+
+  const syncAndLoadCart = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if there's a guest cart to sync
+      const guestCart = localStorage.getItem('guestCart');
+      if (guestCart) {
+        const localItems = JSON.parse(guestCart);
+        if (localItems.length > 0) {
+          // Sync guest cart to backend
+          await cartService.syncCart(localItems);
+          // Clear localStorage cart after sync
+          localStorage.removeItem('guestCart');
+        }
+      // Add to local cart for guest users
+      const existingItemIndex = cart.findIndex(
+        (item) => item.productId === (product._id || product.id)
+      );
+
+      if (existingItemIndex > -1) {
+        // Update quantity
+        const updatedCart = [...cart];
+        updatedCart[existingItemIndex].quantity += 1;
+        setCart(updatedCart);
+      } else {
+        // Add new item
+        const newItem = {
+          id: Date.now().toString(), // Temporary ID for local cart
+          productId: product._id || product.id,
+          name: product.name,
+          price: product.pricing?.offerPrice || product.price,
+          quantity: 1,
+          image: product.images?.[0] || product.image || "",
+          stock: product.stock,
+        };
+        setCart([...cart, newItem]);
+      }
+      toast.success("Item added to cart");
+      return;
+    }
+
+    // Add to backend cart for logged-in users
+    try {
+      const response = await cartService.addToCart(
+        product._id || product.id,
+        1,
+      );
+      if (response.success) {
+        await loadCart();
+        toast.success("Item added to cart"
 
   const loadCart = async () => {
     try {
@@ -52,7 +124,14 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  };if (!isLoggedIn) {
+      // Remove from local cart for guest users
+      setCart(cart.filter((item) => item.id !== itemId));
+      return;
+    }
+
+    // Remove from backend cart for logged-in users
+    
 
   const addToCart = async (product) => {
     if (!isLoggedIn) {
@@ -86,7 +165,17 @@ export const CartProvider = ({ children }) => {
       console.error("Error removing from cart:", error);
     }
   };
+if (!isLoggedIn) {
+      // Update local cart for guest users
+      const updatedCart = cart.map((item) =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      );
+      setCart(updatedCart);
+      return;
+    }
 
+    // Update backend cart for logged-in users
+    
   const updateQuantity = async (itemId, newQuantity) => {
     if (newQuantity < 1) {
       await removeFromCart(itemId);
@@ -95,6 +184,14 @@ export const CartProvider = ({ children }) => {
 
     try {
       const response = await cartService.updateCartItem(itemId, newQuantity);
+    if (!isLoggedIn) {
+      // Clear local cart for guest users
+      setCart([]);
+      localStorage.removeItem('guestCart');
+      return;
+    }
+
+    // Clear backend cart for logged-in users
       if (response.success) {
         await loadCart();
       }

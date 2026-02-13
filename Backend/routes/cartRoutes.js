@@ -2,6 +2,7 @@ import express from "express";
 import {
   getCart,
   addToCart,
+  syncCart,
   updateCartItem,
   removeCartItem,
   clearCart,
@@ -14,6 +15,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get("/", getCart);
+router.post("/sync", syncCart);
 router.post("/", addToCart);
 router.put("/:itemId", updateCartItem);
 router.delete("/:itemId", removeCartItem);

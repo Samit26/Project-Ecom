@@ -8,7 +8,7 @@ export const getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ userId: req.user.id }).populate(
       "items.productId",
-      "name images pricing stock"
+      "name images pricing stock",
     );
 
     if (!cart) {
@@ -70,7 +70,7 @@ export const addToCart = async (req, res) => {
 
     // Check if item already exists in cart
     const existingItemIndex = cart.items.findIndex(
-      (item) => item.productId.toString() === productId
+      (item) => item.productId.toString() === productId,
     );
 
     if (existingItemIndex > -1) {
@@ -89,7 +89,7 @@ export const addToCart = async (req, res) => {
 
     const populatedCart = await Cart.findById(cart._id).populate(
       "items.productId",
-      "name images pricing stock"
+      "name images pricing stock",
     );
 
     res.json({
@@ -101,6 +101,80 @@ export const addToCart = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error adding to cart",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Sync guest cart to user cart
+// @route   POST /api/cart/sync
+// @access  Private
+export const syncCart = async (req, res) => {
+  try {
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cart items",
+      });
+    }
+
+    // Find or create cart
+    let cart = await Cart.findOne({ userId: req.user.id });
+
+    if (!cart) {
+      cart = new Cart({
+        userId: req.user.id,
+        items: [],
+      });
+    }
+
+    // Process each item from guest cart
+    for (const guestItem of items) {
+      const productId = guestItem.productId;
+      const quantity = guestItem.quantity || 1;
+
+      // Check if product exists
+      const product = await Product.findById(productId);
+      if (!product) {
+        continue; // Skip invalid products
+      }
+
+      // Check if item already exists in user's cart
+      const existingItemIndex = cart.items.findIndex(
+        (item) => item.productId.toString() === productId,
+      );
+
+      if (existingItemIndex > -1) {
+        // Add quantities together
+        cart.items[existingItemIndex].quantity += quantity;
+      } else {
+        // Add new item
+        cart.items.push({
+          productId,
+          quantity,
+          price: product.pricing.offerPrice,
+        });
+      }
+    }
+
+    await cart.save();
+
+    const populatedCart = await Cart.findById(cart._id).populate(
+      "items.productId",
+      "name images pricing stock",
+    );
+
+    res.json({
+      success: true,
+      message: "Cart synced successfully",
+      data: populatedCart,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error syncing cart",
       error: error.message,
     });
   }
@@ -153,7 +227,7 @@ export const updateCartItem = async (req, res) => {
 
     const populatedCart = await Cart.findById(cart._id).populate(
       "items.productId",
-      "name images pricing stock"
+      "name images pricing stock",
     );
 
     res.json({
@@ -191,7 +265,7 @@ export const removeCartItem = async (req, res) => {
 
     const populatedCart = await Cart.findById(cart._id).populate(
       "items.productId",
-      "name images pricing stock"
+      "name images pricing stock",
     );
 
     res.json({

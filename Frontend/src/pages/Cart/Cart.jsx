@@ -21,7 +21,7 @@ const Cart = () => {
     cartCount,
     clearCart,
   } = useCart();
-  const { currentUser, isLoggedIn } = useUser();
+  const { currentUser, isLoggedIn, loginWithGoogle } = useUser();
   const navigate = useNavigate();
 
   const [promoCode, setPromoCode] = useState("");
@@ -178,8 +178,15 @@ const Cart = () => {
 
   const handleCheckout = async () => {
     if (!isLoggedIn || !currentUser) {
-      toast.warning("Please login to proceed with checkout");
-      navigate("/");
+      toast.info(
+        "Please login to proceed with checkout. Your cart items will be saved!",
+        {
+          position: "top-center",
+          autoClose: 3000,
+        },
+      );
+      // Trigger Google login - cart will be synced automatically after login
+      loginWithGoogle();
       return;
     }
 

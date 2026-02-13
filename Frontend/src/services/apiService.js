@@ -60,6 +60,12 @@ export const cartService = {
     return response.data;
   },
 
+  // Sync guest cart to user cart
+  syncCart: async (items) => {
+    const response = await api.post("/cart/sync", { items });
+    return response.data;
+  },
+
   // Update cart item
   updateCartItem: async (itemId, quantity) => {
     const response = await api.put(`/cart/${itemId}`, { quantity });
