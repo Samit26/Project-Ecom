@@ -31,13 +31,13 @@ export const CartProvider = ({ children }) => {
   // Save cart to localStorage when it changes (for guest users)
   useEffect(() => {
     if (!isLoggedIn && cart.length >= 0) {
-      localStorage.setItem('guestCart', JSON.stringify(cart));
+      localStorage.setItem("guestCart", JSON.stringify(cart));
     }
   }, [cart, isLoggedIn]);
 
   const loadLocalCart = () => {
     try {
-      const savedCart = localStorage.getItem('guestCart');
+      const savedCart = localStorage.getItem("guestCart");
       if (savedCart) {
         setCart(JSON.parse(savedCart));
       } else {
@@ -52,20 +52,60 @@ export const CartProvider = ({ children }) => {
   const syncAndLoadCart = async () => {
     try {
       setLoading(true);
-      
+
       // Check if there's a guest cart to sync
-      const guestCart = localStorage.getItem('guestCart');
+      const guestCart = localStorage.getItem("guestCart");
       if (guestCart) {
         const localItems = JSON.parse(guestCart);
         if (localItems.length > 0) {
           // Sync guest cart to backend
           await cartService.syncCart(localItems);
           // Clear localStorage cart after sync
-          localStorage.removeItem('guestCart');
+          localStorage.removeItem("guestCart");
         }
+      }
+
+      // Load cart from backend
+      await loadCart();
+    } catch (error) {
+      console.error("Error syncing cart:", error);
+      await loadCart();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCart = async () => {
+    try {
+      setLoading(true);
+      const response = await cartService.getCart();
+      if (response.success) {
+        // Transform backend cart format to frontend format
+        const transformedCart =
+          response.data.items?.map((item) => ({
+            id: item._id,
+            productId: item.productId._id,
+            name: item.productId.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.productId.images?.[0] || "",
+            stock: item.productId.stock,
+          })) || [];
+        setCart(transformedCart);
+      }
+    } catch (error) {
+      console.error("Error loading cart:", error);
+      setCart([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = async (product) => {
+    if (!isLoggedIn) {
       // Add to local cart for guest users
       const existingItemIndex = cart.findIndex(
-        (item) => item.productId === (product._id || product.id)
+        (item) => item.productId === (product._id || product.id),
       );
 
       if (existingItemIndex > -1) {
@@ -98,54 +138,7 @@ export const CartProvider = ({ children }) => {
       );
       if (response.success) {
         await loadCart();
-        toast.success("Item added to cart"
-
-  const loadCart = async () => {
-    try {
-      setLoading(true);
-      const response = await cartService.getCart();
-      if (response.success) {
-        // Transform backend cart format to frontend format
-        const transformedCart =
-          response.data.items?.map((item) => ({
-            id: item._id,
-            productId: item.productId._id,
-            name: item.productId.name,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.productId.images?.[0] || "",
-            stock: item.productId.stock,
-          })) || [];
-        setCart(transformedCart);
-      }
-    } catch (error) {
-      console.error("Error loading cart:", error);
-      setCart([]);
-    } finally {
-      setLoading(false);
-    }
-  };if (!isLoggedIn) {
-      // Remove from local cart for guest users
-      setCart(cart.filter((item) => item.id !== itemId));
-      return;
-    }
-
-    // Remove from backend cart for logged-in users
-    
-
-  const addToCart = async (product) => {
-    if (!isLoggedIn) {
-      toast.warning("Please login to add items to cart");
-      return;
-    }
-
-    try {
-      const response = await cartService.addToCart(
-        product._id || product.id,
-        1,
-      );
-      if (response.success) {
-        await loadCart();
+        toast.success("Item added to cart");
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -156,6 +149,13 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = async (itemId) => {
+    if (!isLoggedIn) {
+      // Remove from local cart for guest users
+      setCart(cart.filter((item) => item.id !== itemId));
+      return;
+    }
+
+    // Remove from backend cart for logged-in users
     try {
       const response = await cartService.removeFromCart(itemId);
       if (response.success) {
@@ -165,33 +165,25 @@ export const CartProvider = ({ children }) => {
       console.error("Error removing from cart:", error);
     }
   };
-if (!isLoggedIn) {
-      // Update local cart for guest users
-      const updatedCart = cart.map((item) =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      );
-      setCart(updatedCart);
-      return;
-    }
 
-    // Update backend cart for logged-in users
-    
   const updateQuantity = async (itemId, newQuantity) => {
     if (newQuantity < 1) {
       await removeFromCart(itemId);
       return;
     }
 
-    try {
-      const response = await cartService.updateCartItem(itemId, newQuantity);
     if (!isLoggedIn) {
-      // Clear local cart for guest users
-      setCart([]);
-      localStorage.removeItem('guestCart');
+      // Update local cart for guest users
+      const updatedCart = cart.map((item) =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item,
+      );
+      setCart(updatedCart);
       return;
     }
 
-    // Clear backend cart for logged-in users
+    // Update backend cart for logged-in users
+    try {
+      const response = await cartService.updateCartItem(itemId, newQuantity);
       if (response.success) {
         await loadCart();
       }
@@ -202,6 +194,14 @@ if (!isLoggedIn) {
   };
 
   const clearCart = async () => {
+    if (!isLoggedIn) {
+      // Clear local cart for guest users
+      setCart([]);
+      localStorage.removeItem("guestCart");
+      return;
+    }
+
+    // Clear backend cart for logged-in users
     try {
       const response = await cartService.clearCart();
       if (response.success) {
