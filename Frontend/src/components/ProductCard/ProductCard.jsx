@@ -1,6 +1,5 @@
 import { useCart } from "../../context/CartContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import "./ProductCard.css";
 
 const ProductCard = ({ product, badgeText }) => {
@@ -28,7 +27,6 @@ const ProductCard = ({ product, badgeText }) => {
   const handleAddToCart = (e) => {
     e.stopPropagation();
     addToCart(product);
-    toast.success(`${product.name} added to cart!`);
   };
 
   const handleCardClick = () => {

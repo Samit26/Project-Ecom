@@ -35,18 +35,13 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      for (let i = 0; i < quantity; i++) {
-        addToCart(product);
-      }
-      toast.success(`${quantity} x ${product.name} added to cart!`);
+      addToCart(product, quantity);
     }
   };
 
   const handleBuyNow = () => {
     if (product) {
-      for (let i = 0; i < quantity; i++) {
-        addToCart(product);
-      }
+      addToCart(product, quantity);
       navigate("/cart");
     }
   };
