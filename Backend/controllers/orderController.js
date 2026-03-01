@@ -63,7 +63,14 @@ export const createOrder = async (req, res) => {
 
     // Verify stock availability for all items
     for (const item of cart.items) {
-      const product = await Product.findById(item.productId);
+      const product = item.productId; // already populated
+      if (!product) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "One or more products in your cart are no longer available. Please update your cart.",
+        });
+      }
       if (product.stock !== "available") {
         return res.status(400).json({
           success: false,
@@ -73,13 +80,15 @@ export const createOrder = async (req, res) => {
     }
 
     // Prepare order items
-    const orderItems = cart.items.map((item) => ({
-      productId: item.productId._id,
-      name: item.productId.name,
-      quantity: item.quantity,
-      price: item.price,
-      image: item.productId.images[0] || "",
-    }));
+    const orderItems = cart.items
+      .filter((item) => item.productId)
+      .map((item) => ({
+        productId: item.productId._id,
+        name: item.productId.name,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.productId.images[0] || "",
+      }));
 
     // Calculate subtotal
     const subtotal = cart.totalAmount;
