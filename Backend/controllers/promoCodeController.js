@@ -64,6 +64,13 @@ export const createPromoCode = async (req, res) => {
       await PromoCode.updateMany({}, { showOnHomePage: false });
     }
 
+    // Adjust validFrom to previous day to avoid timezone mismatch issues
+    if (req.body.validFrom) {
+      const adjustedFrom = new Date(req.body.validFrom);
+      adjustedFrom.setDate(adjustedFrom.getDate() - 1);
+      req.body.validFrom = adjustedFrom;
+    }
+
     const promoCode = await PromoCode.create(req.body);
 
     res.status(201).json({
@@ -90,6 +97,13 @@ export const updatePromoCode = async (req, res) => {
         { _id: { $ne: req.params.id } },
         { showOnHomePage: false },
       );
+    }
+
+    // Adjust validFrom to previous day to avoid timezone mismatch issues
+    if (req.body.validFrom) {
+      const adjustedFrom = new Date(req.body.validFrom);
+      adjustedFrom.setDate(adjustedFrom.getDate() - 1);
+      req.body.validFrom = adjustedFrom;
     }
 
     const promoCode = await PromoCode.findByIdAndUpdate(

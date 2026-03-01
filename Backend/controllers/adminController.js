@@ -178,11 +178,11 @@ export const getDashboardStats = async (req, res) => {
       0,
     );
 
-    // This month earnings
+    // This month earnings (use updatedAt since that reflects when order was marked delivered)
     const thisMonthOrders = await Order.find({
       orderStatus: "delivered",
       paymentStatus: "completed",
-      createdAt: { $gte: firstDayOfMonth },
+      updatedAt: { $gte: firstDayOfMonth },
     });
     const thisMonthEarnings = thisMonthOrders.reduce(
       (sum, order) => sum + order.totalAmount,
@@ -202,9 +202,9 @@ export const getDashboardStats = async (req, res) => {
     // Total orders
     const totalOrders = await Order.countDocuments();
 
-    // Pending orders
-    const pendingOrders = await Order.countDocuments({
-      orderStatus: "pending",
+    // Processing orders
+    const processingOrders = await Order.countDocuments({
+      orderStatus: "processing",
     });
 
     // Total products
@@ -221,7 +221,7 @@ export const getDashboardStats = async (req, res) => {
         ordersCompleted,
         ordersCancelled,
         totalOrders,
-        pendingOrders,
+        processingOrders,
         totalProducts,
         totalUsers,
       },

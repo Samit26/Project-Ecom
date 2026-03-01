@@ -11,7 +11,7 @@ const AdminPanel = ({ onClose }) => {
     ordersCompleted: 0,
     ordersCancelled: 0,
     totalOrders: 0,
-    pendingOrders: 0,
+    processingOrders: 0,
     totalProducts: 0,
     totalUsers: 0,
   });
@@ -270,12 +270,12 @@ const AdminPanel = ({ onClose }) => {
                   <div className="admin-stats secondary">
                     <div className="admin-stat-card pending">
                       <div className="stat-icon">
-                        <i className="fas fa-clock"></i>
+                        <i className="fas fa-cog"></i>
                       </div>
                       <div className="stat-info">
-                        <p className="stat-label">Pending Orders</p>
+                        <p className="stat-label">Processing Orders</p>
                         <h3 className="stat-value">
-                          {dashboardStats.pendingOrders}
+                          {dashboardStats.processingOrders}
                         </h3>
                       </div>
                     </div>
@@ -380,7 +380,6 @@ const AdminPanel = ({ onClose }) => {
                       }}
                     >
                       <option value="">All Status</option>
-                      <option value="pending">Pending</option>
                       <option value="processing">Processing</option>
                       <option value="shipped">Shipped</option>
                       <option value="delivered">Delivered</option>
@@ -491,7 +490,6 @@ const AdminPanel = ({ onClose }) => {
                                 }
                                 disabled={updatingOrderId === order._id}
                               >
-                                <option value="pending">Pending</option>
                                 <option value="processing">Processing</option>
                                 <option value="shipped">Shipped</option>
                                 <option value="delivered">Delivered</option>
