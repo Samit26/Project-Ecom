@@ -61,16 +61,25 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Verify stock availability for all items
-    for (const item of cart.items) {
+    // Filter out stale cart items (deleted products) and clean the cart
+    const validItems = cart.items.filter((item) => item.productId != null);
+
+    if (validItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cart is empty or products are no longer available",
+      });
+    }
+
+    // If stale items were found, clean the cart in background
+    if (validItems.length !== cart.items.length) {
+      cart.items = validItems;
+      await cart.save();
+    }
+
+    // Verify stock availability for valid items
+    for (const item of validItems) {
       const product = item.productId; // already populated
-      if (!product) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "One or more products in your cart are no longer available. Please update your cart.",
-        });
-      }
       if (product.stock !== "available") {
         return res.status(400).json({
           success: false,
@@ -80,15 +89,13 @@ export const createOrder = async (req, res) => {
     }
 
     // Prepare order items
-    const orderItems = cart.items
-      .filter((item) => item.productId)
-      .map((item) => ({
-        productId: item.productId._id,
-        name: item.productId.name,
-        quantity: item.quantity,
-        price: item.price,
-        image: item.productId.images[0] || "",
-      }));
+    const orderItems = validItems.map((item) => ({
+      productId: item.productId._id,
+      name: item.productId.name,
+      quantity: item.quantity,
+      price: item.price,
+      image: item.productId.images[0] || "",
+    }));
 
     // Calculate subtotal
     const subtotal = cart.totalAmount;
