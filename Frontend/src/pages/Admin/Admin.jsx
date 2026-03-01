@@ -378,8 +378,8 @@ const Admin = () => {
             <p className="stat-value">{stats.totalOrders}</p>
           </div>
           <div className="stat-card">
-            <h3>Pending Orders</h3>
-            <p className="stat-value">{stats.pendingOrders}</p>
+            <h3>Processing Orders</h3>
+            <p className="stat-value">{stats.processingOrders}</p>
           </div>
           <div className="stat-card">
             <h3>Completed</h3>
@@ -520,7 +520,6 @@ const Admin = () => {
               }}
             >
               <option value="">All Status</option>
-              <option value="pending">Pending</option>
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>
               <option value="delivered">Delivered</option>
@@ -610,7 +609,6 @@ const Admin = () => {
                         }
                         className="status-select"
                       >
-                        <option value="pending">Pending</option>
                         <option value="processing">Processing</option>
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>
